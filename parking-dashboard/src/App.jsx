@@ -1,0 +1,164 @@
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+
+// ── Admin pages ────────────────────────────────────────────────
+import AdminDashboard from './pages/admin/AdminDashboard'
+import OwnerAccounts from './pages/admin/OwnerAccounts'
+import ParkingSites from './pages/admin/ParkingSites'
+import AdminPayments from './pages/admin/Payments'
+import Queries from './pages/admin/Queries'
+import AdminReports from './pages/admin/Reports'
+import AdminSettings from './pages/admin/Settings'
+
+import SystemLogs from './pages/admin/SystemLogs'
+import UserAccounts from './pages/admin/UserAccounts'
+import AIModelMonitor from './pages/admin/AIModelMonitor'
+import Refunds from './pages/admin/Refunds'
+import PeakHourDashboard from './pages/admin/PeakHourDashboard'
+
+// ── Layouts ────────────────────────────────────────────────────
+import AdminLayout from './layouts/AdminLayout'
+import CashierLayout from './layouts/CashierLayout'
+import OwnerLayout from './layouts/OwnerLayout'
+
+// ── Cashier pages ──────────────────────────────────────────────
+import CashierDashboard from './pages/cashier/Dashboard'
+import EntryGate from './pages/cashier/EntryGate'
+import ExitGate from './pages/cashier/ExitGate'
+import CashierBookings from './pages/cashier/Bookings'
+import CashierPayments from './pages/cashier/Payments'
+import CashierSlots from './pages/cashier/Slots'
+
+// ── Owner pages ──────────────────────────────────────────────
+
+import OwnerDashboard from './pages/owner/Dashboard'
+import SiteManagement from './pages/owner/SiteManagement'
+import SlotConfig from './pages/owner/SlotConfig'
+import Cashiers from './pages/owner/Cashiers'
+import Bookings from './pages/owner/Bookings'
+import OwnerPayments from './pages/owner/Payments'
+import OwnerReports from './pages/owner/Reports'
+import Settings from './pages/owner/Settings'
+import SiteDetail from './pages/owner/SiteDetail'
+
+// ── Auth util ──────────────────────────────────────────────────
+import { getToken, getUser, logout } from './utils/auth'
+import Login from './pages/Login'
+
+const LANDING_URL = 'http://127.0.0.1:5500/index.html'
+
+function RequireAuth({ allowedRoles, children }) {
+  const token = getToken()
+  const { role } = getUser()
+
+  if (!token || !role) {
+    return <Navigate to="/login" replace />
+  }
+
+  if (allowedRoles && !allowedRoles.includes(role)) {
+    if (role === 'admin') return <Navigate to="/admin/dashboard" replace />
+    if (role === 'entry_cashier') return <Navigate to="/cashier/entry" replace />
+    if (role === 'exit_cashier') return <Navigate to="/cashier/exit" replace />
+    if (role === 'parking_owner') return <Navigate to="/owner/dashboard" replace />
+    return <Navigate to="/login" replace />
+  }
+
+  return children
+}
+
+function RootRedirect() {
+  const token = getToken()
+  const { role } = getUser()
+
+  if (!token || !role) {
+    return <Navigate to="/login" replace />
+  }
+  if (role === 'admin') return <Navigate to="/admin/dashboard" replace />
+  if (role === 'entry_cashier') return <Navigate to="/cashier/entry" replace />
+  if (role === 'exit_cashier') return <Navigate to="/cashier/exit" replace />
+  if (role === 'parking_owner') return <Navigate to="/owner/dashboard" replace />
+  return <Navigate to="/login" replace />
+}
+
+// Shorthand wrapper to keep route definitions clean
+const CASHIER_ROLES = ['entry_cashier', 'exit_cashier']
+
+function CashierRoute({ element }) {
+  return (
+    <RequireAuth allowedRoles={CASHIER_ROLES}>
+      <CashierLayout>{element}</CashierLayout>
+    </RequireAuth>
+  )
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+
+        {/* Root → smart redirect based on role */}
+        <Route path="/" element={<RootRedirect />} />
+
+        {/* ── Admin ── */}
+        <Route
+          path="/admin/dashboard/*"
+          element={
+            <RequireAuth allowedRoles={['admin']}>
+              <AdminLayout>
+                <Routes>
+                  <Route index element={<AdminDashboard />} />
+                  <Route path="owner-accounts" element={<OwnerAccounts />} />
+                  <Route path="parking-sites" element={<ParkingSites />} />
+                  <Route path="payments" element={<AdminPayments />} />
+                  <Route path="queries" element={<Queries />} />
+                  <Route path="reports" element={<AdminReports />} />
+                  <Route path="settings" element={<AdminSettings />} />
+                  <Route path="system-logs" element={<SystemLogs />} />
+                  <Route path="user-accounts" element={<UserAccounts />} />
+                  <Route path="ai-monitor" element={<AIModelMonitor />} />
+                  <Route path="refunds" element={<Refunds />} />
+                  <Route path="peak-hours" element={<PeakHourDashboard />} />
+                </Routes>
+              </AdminLayout>
+            </RequireAuth>
+          }
+        />
+
+        <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+
+        {/* ── Owner ── */}
+        <Route
+          path="/owner"
+          element={
+            <RequireAuth allowedRoles={['parking_owner', 'owner']}>
+              <OwnerLayout />
+            </RequireAuth>
+          }
+        >
+          <Route index element={<Navigate to="/owner/dashboard" replace />} />
+          <Route path="dashboard" element={<OwnerDashboard />} />
+          <Route path="site" element={<SiteManagement />} />
+          <Route path="site/:id" element={<SiteDetail />} />
+          <Route path="slots" element={<SlotConfig />} />
+          <Route path="cashiers" element={<Cashiers />} />
+          <Route path="bookings" element={<Bookings />} />
+          <Route path="payments" element={<OwnerPayments />} />
+          <Route path="reports" element={<OwnerReports />} />
+          <Route path="settings" element={<Settings />} />
+        </Route>
+
+        {/* ── Cashier ── */}
+        <Route path="/cashier/entry" element={<CashierRoute element={<EntryGate />} />} />
+        <Route path="/cashier/exit" element={<CashierRoute element={<ExitGate />} />} />
+        <Route path="/cashier/dashboard" element={<CashierRoute element={<CashierDashboard />} />} />
+        <Route path="/cashier/bookings" element={<CashierRoute element={<CashierBookings />} />} />
+        <Route path="/cashier/payments" element={<CashierRoute element={<CashierPayments />} />} />
+        <Route path="/cashier/slots" element={<CashierRoute element={<CashierSlots />} />} />
+
+        {/* Catch-all */}
+        <Route path="/login" element={<Login />} />
+        <Route path="*" element={<RootRedirect />} />
+
+      </Routes>
+    </BrowserRouter>
+  )
+}

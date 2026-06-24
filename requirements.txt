@@ -1,0 +1,10 @@
+pip install django==4.2;
+pip install djangorestframework;
+pip install djangorestframework-simplejwt;
+pip install django-cors-headers;
+pip install psycopg2-binary;
+pip install python-dotenv;
+pip install twilio;
+pip install Pillow;
+pip install django-redis;
+pip install redis;

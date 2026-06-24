@@ -1,0 +1,98 @@
+{
+    "Azad_Jammu_Kashmir": {
+      "general": [
+        {"vehicle_type": "Car", "example": "AA 123", "regex": "^[A-Z]{2}[\\s\\-]?[0-9]{3}$"},
+        {"vehicle_type": "Motorcycle", "example": "AAAA 123", "regex": "^[A-Z]{4}[\\s\\-]?[0-9]{3}$"},
+        {"vehicle_type": "Public Transport", "example": "AAAA 123", "regex": "^[A-Z]{4}[\\s\\-]?[0-9]{3}$"},
+        {"vehicle_type": "Government", "example": "AAAA 123", "regex": "^[A-Z]{4}[\\s\\-]?[0-9]{3}$"}
+      ]
+    },
+    "Balochistan": {
+      "general": [
+        {"vehicle_type": "Car", "example": "AA 123", "regex": "^[A-Z]{2}[\\s\\-]?[0-9]{3}$"},
+        {"vehicle_type": "Motorcycle", "example": "AA 1234", "regex": "^[A-Z]{2}[\\s\\-]?[0-9]{4}$"},
+        {"vehicle_type": "Public Transport", "example": "AA 1234", "regex": "^[A-Z]{2}[\\s\\-]?[0-9]{4}$"},
+        {"vehicle_type": "Government", "example": "AAAA 123", "regex": "^[A-Z]{4}[\\s\\-]?[0-9]{3}$"}
+      ]
+    },
+    "Gilgit_Baltistan": {
+      "general": [
+        {"vehicle_type": "Car", "example": "AAA 12", "regex": "^[A-Z]{3}[\\s\\-]?[0-9]{2}$"}
+      ]
+    },
+    "Islamabad_Capital_Territory": {
+      "Islamabad": [
+        {"vehicle_type": "Car", "example": "AA 123", "regex": "^[A-Z]{2}[\\s\\-]?[0-9]{3}$"},
+        {"vehicle_type": "Motorcycle", "example": "AA 123", "regex": "^[A-Z]{2}[\\s\\-]?[0-9]{3}$"},
+        {"vehicle_type": "Government", "example": "GOV 123", "regex": "^[A-Z]{3}[\\s\\-]?[0-9]{3}$"}
+      ]
+    },
+    "Khyber_Pakhtunkhwa": {
+      "Peshawar": [
+        {"vehicle_type": "Car", "example": "AA 1234", "regex": "^[A-Z]{2}[\\s\\-]?[0-9]{4}$"},
+        {"vehicle_type": "Motorcycle", "example": "AA 123", "regex": "^[A-Z]{2}[\\s\\-]?[0-9]{3}$"},
+        {"vehicle_type": "Public Transport", "example": "AA 123", "regex": "^[A-Z]{2}[\\s\\-]?[0-9]{3}$"},
+        {"vehicle_type": "Government", "example": "AA 123", "regex": "^[A-Z]{2}[\\s\\-]?[0-9]{3}$"}
+      ],
+      "Charsadda": [
+        {"vehicle_type": "Car", "example": "AA 1234", "regex": "^[A-Z]{2}[\\s\\-]?[0-9]{4}$"}
+      ],
+      "Nowshera": [
+        {"vehicle_type": "Car", "example": "AA 1234", "regex": "^[A-Z]{2}[\\s\\-]?[0-9]{4}$"}
+      ],
+      "Abbottabad": [
+        {"vehicle_type": "Car", "example": "AA 1234", "regex": "^[A-Z]{2}[\\s\\-]?[0-9]{4}$"}
+      ],
+      "Bannu": [
+        {"vehicle_type": "Car", "example": "AA 1234", "regex": "^[A-Z]{2}[\\s\\-]?[0-9]{4}$"}
+      ],
+      "Kohat": [
+        {"vehicle_type": "Car", "example": "AA 1234", "regex": "^[A-Z]{2}[\\s\\-]?[0-9]{4}$"}
+      ]
+    },
+    "Punjab": {
+      "Lahore": [
+        {"vehicle_type": "Car", "example": "L 1234", "regex": "^[A-Z]{1}[\\s\\-]?[0-9]{4}$"},
+        {"vehicle_type": "Motorcycle", "example": "ALP 1234", "regex": "^[A-Z]{3}[\\s\\-]?[0-9]{4}$"}
+      ],
+      "Multan": [
+        {"vehicle_type": "Car", "example": "M 1234", "regex": "^[A-Z]{1}[\\s\\-]?[0-9]{4}$"}
+      ],
+      "Vehari": [
+        {"vehicle_type": "Car", "example": "V 1234", "regex": "^[A-Z]{1}[\\s\\-]?[0-9]{4}$"}
+      ],
+      "Gujrat": [
+        {
+            "vehicle_type": "Car",
+            "example": "GJT 1234",
+            "regex": "^[A-Z]{2,4}[\\s\\-]?[0-9]{3,5}$"
+        }
+    ],
+      "Other": [
+        {"vehicle_type": "Public Transport", "example": "CAA 000", "regex": "^[A-Z]{3}[\\s\\-]?[0-9]{3}$"},
+        {"vehicle_type": "Government", "example": "GOV 123", "regex": "^[A-Z]{3}[\\s\\-]?[0-9]{3}$"}
+      ]
+      
+    },
+    "Sindh": {
+      "Karachi": [
+        {"vehicle_type": "Car", "example": "AAA 001", "regex": "^[A-Z]{3}[\\s\\-]?[0-9]{3}$"},
+        {"vehicle_type": "Motorcycle", "example": "AAA 0000", "regex": "^[A-Z]{3}[\\s\\-]?[0-9]{4}$"},
+        {"vehicle_type": "Public Transport", "example": "KH-5708", "regex": "^KH\\-[0-9]{4}$"},
+        {"vehicle_type": "Government", "example": "GS 001", "regex": "^(GS|GP|GL|HC|SP)[\\s\\-]?[0-9]{3}$"}
+      ],
+      "Hyderabad": [
+        {"vehicle_type": "Car", "example": "AAA 002", "regex": "^[A-Z]{3}[\\s\\-]?[0-9]{3}$"}
+      ]
+    },
+    "Federal": {
+      "general": [
+        {"vehicle_type": "Government", "example": "GP 1011", "regex": "^GP[\\s\\-]?[0-9]{4}$"},
+        {"vehicle_type": "Diplomatic", "example": "D 123", "regex": "^D[\\s\\-]?[0-9]{3}$"},
+        {"vehicle_type": "Armed Forces", "example": "PA 12345", "regex": "^[A-Z]{2}[\\s\\-]?[0-9]{5}$"},
+        {"vehicle_type": "Police", "example": "SP 123", "regex": "^SP[\\s\\-]?[0-9]{3}$"},
+        {"vehicle_type": "NGO/Semi Government", "example": "NGO 123", "regex": "^NGO[\\s\\-]?[0-9]{3}$"}
+      ]
+    }
+  }
+  

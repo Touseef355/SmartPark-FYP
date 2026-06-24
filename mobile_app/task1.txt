@@ -1,0 +1,9 @@
+Your Task is to make a signup and login page for our smart parking system 
+visit any prefer youtube channel 
+make sure database is postgreSql 
+<<<<<<< HEAD
+but first make the front end (ui) for both signup and login then do backendpi
+=======
+but first make the front end (ui) for both signup and login then do backend
+best of luck
+>>>>>>> 682c31153a8140dfadef1a8a8a442cc53754eeda
