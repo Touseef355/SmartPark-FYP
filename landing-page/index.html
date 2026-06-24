@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Parking System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+
+    <!-- REMOVE THIS DUPLICATE - Line 14-15 -->
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+        window.supabase = createClient(
+            'https://yvnjawshurzivvkkzzzd.supabase.co',
+            'sb_publishable_3DGA6YVAaZwCCe82gDTZBA_UROwbiGF'
+        )
+    </script>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-logo">SmartPark</div>
+        <div class="nav-links">
+            <a href="#home">Home</a>
+            <a href="#features">Features</a>
+            <a href="#how-it-works">How It Works</a>
+            <a href="#contact">Contact</a>
+        </div>
+        <div class="nav-btn">
+            <button onclick="openLoginModal()">Login</button>
+        </div>
+    </nav>
+
+    <section id="home" class="hero">
+        <div class="overlay"></div>
+        <div class="hero-content">
+            <h1 class="hero-title">
+                Smart Parking System <br>
+                <span class="highlight">Zero Hassle Experience</span>
+            </h1>
+            <p class="hero-subtitle">
+                AI-powered vehicle detection, real-time slot tracking, and seamless digital payments — all in one
+                platform.
+            </p>
+            <div class="hero-buttons">
+                <button class="btn-primary" onclick="openLoginModal()">Get Started</button>
+                <button class="btn-secondary">Learn More</button>
+            </div>
+        </div>
+    </section>
+
+    <section class="features" id="features">
+        <div class="section-header">
+            <span class="section-badge">Why Choose Us</span>
+            <h2>Smart Parking <span class="highlight">Features</span></h2>
+            <p>Advanced automation designed for modern parking management</p>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <i class="fas fa-robot feature-icon"></i>
+                <h3>AI Plate Detection</h3>
+                <p>Automatic license plate recognition using computer vision.</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-map-marker-alt feature-icon"></i>
+                <h3>Live Slot Tracking</h3>
+                <p>Real-time parking availability across all zones.</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-users feature-icon"></i>
+                <h3>Role-Based Access</h3>
+                <p>Custom dashboards for admin, owners, and staff.</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-credit-card feature-icon"></i>
+                <h3>Digital Payments</h3>
+                <p>Cashless and automated billing system.</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-mobile-alt feature-icon"></i>
+                <h3>Mobile App</h3>
+                <p>Book and manage parking directly from your phone.</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-shield-alt feature-icon"></i>
+                <h3>Secure System</h3>
+                <p>Reliable backend with secure access control.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="how-it-works" id="how-it-works">
+        <div class="section-header">
+            <span class="section-badge">Process</span>
+            <h2>How It <span class="highlight">Works</span></h2>
+        </div>
+        <div class="steps-container">
+            <div class="step">
+                <i class="fas fa-car step-icon"></i>
+                <h3>Drive In</h3>
+                <p>Vehicle enters the parking area.</p>
+            </div>
+            <div class="step">
+                <i class="fas fa-camera step-icon"></i>
+                <h3>Scan Plate</h3>
+                <p>AI detects license plate automatically.</p>
+            </div>
+            <div class="step">
+                <i class="fas fa-map step-icon"></i>
+                <h3>Assign Slot</h3>
+                <p>System assigns available parking space.</p>
+            </div>
+            <div class="step">
+                <i class="fas fa-check-circle step-icon"></i>
+                <h3>Exit & Pay</h3>
+                <p>Automatic billing and smooth exit.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section with Slider Design -->
+    <section class="contact-section" id="contact">
+        <div class="section-header">
+            <span class="section-badge">Get In Touch</span>
+            <h2>Contact <span class="highlight">Support</span></h2>
+            <p>Have questions? Send us a message</p>
+        </div>
+
+        <div class="contact-slider-container">
+            <!-- Slider Navigation -->
+            <div class="slider-nav">
+                <button class="slider-nav-btn active" data-slide="0">
+                    <i class="fas fa-envelope"></i>
+                    <span>Send Query</span>
+                </button>
+                <button class="slider-nav-btn" data-slide="1">
+                    <i class="fas fa-building"></i>
+                    <span>Owner Registration</span>
+                </button>
+                <button class="slider-nav-btn" data-slide="2">
+                    <i class="fas fa-headset"></i>
+                    <span>Support</span>
+                </button>
+            </div>
+
+            <!-- Slider Wrapper -->
+            <div class="slider-wrapper">
+                <!-- Slide 1: Contact Form -->
+                <div class="contact-slide active">
+                    <div class="contact-card">
+                        <div class="contact-card-header">
+                            <i class="fas fa-paper-plane"></i>
+                            <h3>Send us a Message</h3>
+                            <p>We'll get back to you within 24 hours</p>
+                        </div>
+                        <form id="contactForm" onsubmit="submitQuery(event)" class="contact-form">
+                            <div class="form-row-2col">
+                                <div class="form-field">
+                                    <label>Full Name *</label>
+                                    <div class="input-with-icon">
+                                        <i class="fas fa-user"></i>
+                                        <input type="text" id="queryName" placeholder="Enter your full name">
+                                    </div>
+                                    <span class="error-msg" id="nameError"></span>
+                                </div>
+                                <div class="form-field">
+                                    <label>Email Address *</label>
+                                    <div class="input-with-icon">
+                                        <i class="fas fa-envelope"></i>
+                                        <input type="email" id="queryEmail" placeholder="your@email.com">
+                                    </div>
+                                    <span class="error-msg" id="emailError"></span>
+                                </div>
+                            </div>
+
+                            <div class="form-row-2col">
+                                <div class="form-field">
+                                    <label>Phone Number</label>
+                                    <div class="input-with-icon">
+                                        <i class="fas fa-phone"></i>
+                                        <input type="tel" id="queryPhone" placeholder="0300-1234567">
+                                    </div>
+                                    <span class="error-msg" id="phoneError"></span>
+                                </div>
+                                <div class="form-field">
+                                    <label>Query Type *</label>
+                                    <div class="input-with-icon">
+                                        <i class="fas fa-tag"></i>
+                                        <select id="queryType">
+                                            <option value="">Select query type</option>
+                                            <option value="general"> General Inquiry</option>
+                                            <option value="owner_registration"> Owner Registration</option>
+                                            <option value="subscription"> Subscription Plan</option>
+                                            <option value="report"> Report Issue</option>
+                                            <option value="technical"> Technical Support</option>
+                                            <option value="partnership"> Partnership</option>
+                                        </select>
+                                    </div>
+                                    <span class="error-msg" id="typeError"></span>
+                                </div>
+                            </div>
+
+                            <div class="form-field">
+                                <label>Message *</label>
+                                <div class="input-with-icon">
+                                    <i class="fas fa-comment"></i>
+                                    <textarea id="queryMessage" rows="4"
+                                        placeholder="Describe your query in detail..."></textarea>
+                                </div>
+                                <span class="error-msg" id="messageError"></span>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="submit" class="submit-btn">
+                                    <i class="fas fa-paper-plane"></i>
+                                    <span>Send Message</span>
+                                    <div class="btn-spinner" style="display:none;"></div>
+                                </button>
+                            </div>
+
+                            <div id="contactSuccessMsg" class="success-message" style="display:none;"></div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Slide 2: Owner Registration -->
+                <div class="contact-slide">
+                    <div class="contact-card">
+                        <div class="contact-card-header">
+                            <i class="fas fa-building"></i>
+                            <h3>Parking Owner Registration</h3>
+                            <p>Join our network and start earning</p>
+                        </div>
+                        <form id="ownerRegForm" onsubmit="submitOwnerRegistration(event)" class="contact-form">
+                            <div class="form-row-2col">
+                                <div class="form-field">
+                                    <label>Full Name *</label>
+                                    <div class="input-with-icon">
+                                        <i class="fas fa-user"></i>
+                                        <input type="text" id="regName" placeholder="Your full name">
+                                    </div>
+                                    <span class="error-msg" id="regNameError"></span>
+                                </div>
+                                <div class="form-field">
+                                    <label>Email Address *</label>
+                                    <div class="input-with-icon">
+                                        <i class="fas fa-envelope"></i>
+                                        <input type="email" id="regEmail" placeholder="your@email.com">
+                                    </div>
+                                    <span class="error-msg" id="regEmailError"></span>
+                                </div>
+                            </div>
+
+                            <div class="form-row-2col">
+                                <div class="form-field">
+                                    <label>Phone Number *</label>
+                                    <div class="input-with-icon">
+                                        <i class="fas fa-phone"></i>
+                                        <input type="tel" id="regPhone" placeholder="0300-1234567">
+                                    </div>
+                                    <span class="error-msg" id="regPhoneError"></span>
+                                </div>
+                                <div class="form-field">
+                                    <label>City *</label>
+                                    <div class="input-with-icon">
+                                        <i class="fas fa-city"></i>
+                                        <input type="text" id="regCity" placeholder="Lahore, Karachi, etc.">
+                                    </div>
+                                    <span class="error-msg" id="regCityError"></span>
+                                </div>
+                            </div>
+
+                            <div class="form-field">
+                                <label>Parking Site Name *</label>
+                                <div class="input-with-icon">
+                                    <i class="fas fa-parking"></i>
+                                    <input type="text" id="regSiteName" placeholder="e.g., Gulberg Parking Plaza">
+                                </div>
+                                <span class="error-msg" id="regSiteError"></span>
+                            </div>
+
+                            <div class="form-field">
+                                <label>Site Address *</label>
+                                <div class="input-with-icon">
+                                    <i class="fas fa-location-dot"></i>
+                                    <textarea id="regAddress" rows="2" placeholder="Complete address"></textarea>
+                                </div>
+                                <span class="error-msg" id="regAddressError"></span>
+                            </div>
+
+                            <div class="form-row-2col">
+                                <div class="form-field">
+                                    <label>Total Parking Slots *</label>
+                                    <div class="input-with-icon">
+                                        <i class="fas fa-layer-group"></i>
+                                        <input type="number" id="regSlots" placeholder="Number of spaces">
+                                    </div>
+                                    <span class="error-msg" id="regSlotsError"></span>
+                                </div>
+                                <div class="form-field">
+                                    <label>Expected Monthly Revenue</label>
+                                    <div class="input-with-icon">
+                                        <i class="fas fa-rupee-sign"></i>
+                                        <input type="text" id="regRevenue" placeholder="Optional">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="submit" class="submit-btn">
+                                    <i class="fas fa-paper-plane"></i>
+                                    <span>Submit Registration</span>
+                                    <div class="btn-spinner" style="display:none;"></div>
+                                </button>
+                            </div>
+
+                            <div id="regSuccessMsg" class="success-message" style="display:none;"></div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Slide 3: Support & Info -->
+                <div class="contact-slide">
+                    <div class="contact-card">
+                        <div class="contact-card-header">
+                            <i class="fas fa-headset"></i>
+                            <h3>Support Center</h3>
+                            <p>We're here to help 24/7</p>
+                        </div>
+
+                        <div class="support-options">
+                            <div class="support-option">
+                                <div class="support-icon">
+                                    <i class="fas fa-phone-alt"></i>
+                                </div>
+                                <div class="support-details">
+                                    <h4>Call Us</h4>
+                                    <p>+92 300 1234567</p>
+                                    <small>Mon-Sat: 9AM - 9PM</small>
+                                </div>
+                            </div>
+
+                            <div class="support-option">
+                                <div class="support-icon">
+                                    <i class="fas fa-envelope"></i>
+                                </div>
+                                <div class="support-details">
+                                    <h4>Email Us</h4>
+                                    <p>support@smartpark.com</p>
+                                    <p>owners@smartpark.com</p>
+                                </div>
+                            </div>
+
+                            <div class="support-option">
+                                <div class="support-icon">
+                                    <i class="fab fa-whatsapp"></i>
+                                </div>
+                                <div class="support-details">
+                                    <h4>WhatsApp</h4>
+                                    <p>+92 300 1234567</p>
+                                    <small>Quick response</small>
+                                </div>
+                            </div>
+
+                            <div class="support-option">
+                                <div class="support-icon">
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                                <div class="support-details">
+                                    <h4>Support Hours</h4>
+                                    <p>Monday - Saturday</p>
+                                    <small>9:00 AM - 9:00 PM</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="faq-preview">
+                            <h4><i class="fas fa-question-circle"></i> Quick FAQ</h4>
+                            <div class="faq-item">
+                                <p><strong>How to become a parking owner?</strong></p>
+                                <p>Fill the registration form in the "Owner Registration" tab</p>
+                            </div>
+                            <div class="faq-item">
+                                <p><strong>What payment methods are accepted?</strong></p>
+                                <p>Cash, EasyPaisa, JazzCash, and Card payments</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slider Dots -->
+            <div class="slider-dots">
+                <span class="slider-dot active" data-slide="0"></span>
+                <span class="slider-dot" data-slide="1"></span>
+                <span class="slider-dot" data-slide="2"></span>
+            </div>
+        </div>
+    </section>
+
+    <footer id="contact" class="footer">
+        <div class="footer-top">
+            <div class="footer-col">
+                <div class="footer-logo">SmartPark</div>
+                <p>AI-powered smart parking system for modern cities.</p>
+            </div>
+            <div class="footer-col">
+                <h4>Links</h4>
+                <ul>
+                    <li><a href="#home">Home</a></li>
+                    <li><a href="#features">Features</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Product</h4>
+                <ul>
+                    <li>Dashboard</li>
+                    <li>Mobile App</li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Team</h4>
+                <ul>
+                    <li>Ali Irshad</li>
+                    <li>Touseef Ahmed</li>
+                    <li>Sabhat Fatima</li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>© 2026 SmartPark — Final Year Project</p>
+        </div>
+    </footer>
+
+    <!-- ═══════════ LOGIN MODAL ═══════════ -->
+    <div class="modal-overlay" id="loginModal" onclick="handleOverlayClick(event)">
+        <div class="modal-box">
+
+            <button class="modal-close" onclick="closeLoginModal()">
+                <i class="fas fa-times"></i>
+            </button>
+
+            <!-- STEP 1: Role Selection -->
+            <div id="step-role">
+                <div class="modal-header">
+                    <div class="modal-logo"><i class="fas fa-parking"></i></div>
+                    <h2>Welcome to <span class="highlight">SmartPark</span></h2>
+                    <p>Select your role to continue</p>
+                </div>
+                <div class="role-grid">
+                    <button class="role-card" onclick="selectRole('admin')">
+                        <div class="role-icon-wrap admin-icon"><i class="fas fa-user-shield"></i></div>
+                        <div class="role-info">
+                            <h3>Admin</h3>
+                            <p>System-wide management &amp; oversight</p>
+                        </div>
+                        <i class="fas fa-chevron-right role-arrow"></i>
+                    </button>
+                    <button class="role-card" onclick="selectRole('owner')">
+                        <div class="role-icon-wrap owner-icon"><i class="fas fa-building"></i></div>
+                        <div class="role-info">
+                            <h3>Parking Owner</h3>
+                            <p>Manage your site, slots &amp; revenue</p>
+                        </div>
+                        <i class="fas fa-chevron-right role-arrow"></i>
+                    </button>
+                    <button class="role-card" onclick="selectRole('cashier')">
+                        <div class="role-icon-wrap cashier-icon"><i class="fas fa-cash-register"></i></div>
+                        <div class="role-info">
+                            <h3>Cashier</h3>
+                            <p>Handle entries, exits &amp; payments</p>
+                        </div>
+                        <i class="fas fa-chevron-right role-arrow"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- STEP 2: Login Form -->
+            <div id="step-login" style="display:none;">
+                <button class="back-btn" onclick="goBack()">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+                <div class="modal-header">
+                    <div class="role-badge" id="roleBadge"></div>
+                    <h2>Sign In</h2>
+                    <p id="roleSubtitle"></p>
+                </div>
+                <form class="login-form" onsubmit="handleLogin(event)">
+
+                    <!-- Cashier Type — sirf cashier role select karne ke baad dikhe ga -->
+                    <div class="form-group" id="cashierTypeGroup" style="display:none;">
+                        <label>Cashier Type</label>
+                        <div class="input-wrap select-wrap">
+                            <i class="fas fa-id-badge"></i>
+                            <select id="cashierTypeInput" onchange="handleCashierTypeChange()">
+                                <option value="">-- Select your role --</option>
+                                <option value="entry_cashier">Entry Gate Cashier</option>
+                                <option value="exit_cashier">Exit Gate Cashier</option>
+
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <div class="input-wrap">
+                            <i class="fas fa-envelope"></i>
+                            <input type="email" id="emailInput" placeholder="Enter your email" required />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <div class="input-wrap">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="passwordInput" placeholder="Enter your password" required />
+                            <button type="button" class="eye-btn" onclick="togglePassword()">
+                                <i class="fas fa-eye" id="eyeIcon"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="loginError" class="login-error" style="display:none;">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <span id="loginErrorMsg">Invalid credentials</span>
+                    </div>
+                    <button type="submit" class="login-submit-btn" id="submitBtn">
+                        <span id="btnText">Sign In</span>
+                        <i class="fas fa-spinner fa-spin" id="btnSpinner" style="display:none;"></i>
+                    </button>
+                </form>
+            </div>
+
+        </div>
+    </div>
+    <!-- ═══════════ End Modal ═══════════ -->
+
+    <script src="script.js"></script>
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
+        const supabase = createClient(
+            'https://yvnjawshurzivvkkzzzd.supabase.co',
+            'sb_publishable_3DGA6YVAaZwCCe82gDTZBA_UROwbiGF' // Supabase → Settings → API → anon public
+        )
+
+        // 1. OWNER REGISTRATION FORM - jo pehle wale screenshots me tha
+        const ownerRegForm = document.querySelector('#ownerRegisterForm')
+        ownerRegForm?.addEventListener('submit', async (e) => {
+            e.preventDefault()
+            const btn = e.target.querySelector('button[type="submit"]')
+            btn.disabled = true
+            btn.textContent = 'Submitting...'
+
+            const fd = new FormData(e.target)
+
+            const { error } = await supabase.from('owner_requests').insert([{
+                name: fd.get('full_name'),
+                email: fd.get('email'),
+                phone: fd.get('phone'),
+                city: fd.get('city'),
+                parking_name: fd.get('parking_site_name'),
+                site_address: fd.get('site_address'),
+                total_slots: parseInt(fd.get('total_slots')),
+                expected_revenue: fd.get('expected_revenue'),
+                status: 'pending'
+            }])
+
+            if (error) {
+                alert('Error: ' + error.message)
+                btn.disabled = false
+                btn.textContent = 'Submit Registration'
+            } else {
+                alert('Request submitted successfully! Payment confirm hone ke baad admin aapko email par credentials bhejega.')
+                e.target.reset()
+                btn.disabled = false
+                btn.textContent = 'Submit Registration'
+            }
+        })
+
+        // 2. OWNER LOGIN MODAL - Screenshot 2 wala
+        const ownerLoginForm = document.querySelector('#ownerLoginForm') // modal wale form ko ye id do
+        ownerLoginForm?.addEventListener('submit', async (e) => {
+            e.preventDefault()
+            const btn = e.target.querySelector('button[type="submit"]')
+            btn.disabled = true
+            btn.textContent = 'Signing In...'
+
+            const email = e.target.email.value
+            const password = e.target.password.value
+
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+
+            if (error) {
+                alert('Login Failed: ' + error.message)
+                btn.disabled = false
+                btn.textContent = 'Sign In'
+                return
+            }
+
+            // Role check - sirf owner login kar sakta hai
+            if (data.user.user_metadata?.role !== 'owner') {
+                await supabase.auth.signOut()
+                alert('Access denied. Ye account Parking Owner ka nahi hai.')
+                btn.disabled = false
+                btn.textContent = 'Sign In'
+                return
+            }
+
+            // Success - React owner dashboard par bhej do
+            window.location.href = 'http://localhost:5173/owner/dashboard'
+        })
+    </script>
+</body>
+
+</html>

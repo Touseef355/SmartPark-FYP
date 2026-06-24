@@ -1,0 +1,844 @@
+// ════════════════════════════════════════════
+// CONFIG
+// ════════════════════════════════════════════
+const API_BASE_URL = 'http://127.0.0.1:8000';
+
+// ════════════════════════════════════════════
+// WAIT FOR DOM TO LOAD
+// ════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', function () {
+    console.log('DOM fully loaded');
+    initializeNavigation();
+    initializeModal();
+    initializeSlider();
+    initializeRealTimeValidation();
+});
+
+// ════════════════════════════════════════════
+// INITIALIZE NAVIGATION
+// ════════════════════════════════════════════
+function initializeNavigation() {
+    // Smooth scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(link => {
+        link.addEventListener('click', function (e) {
+            e.preventDefault();
+            const targetId = this.getAttribute('href');
+            if (targetId && targetId !== '#') {
+                const target = document.querySelector(targetId);
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }
+        });
+    });
+
+    // Navbar scroll effect
+    const navbar = document.querySelector('.navbar');
+    if (navbar) {
+        window.addEventListener('scroll', function () {
+            if (window.scrollY > 50) {
+                navbar.style.backgroundColor = '#0d0d1a';
+                navbar.style.boxShadow = '0 4px 20px rgba(0, 212, 255, 0.15)';
+            } else {
+                navbar.style.backgroundColor = 'rgba(0,0,0,0.7)';
+                navbar.style.boxShadow = '0 2px 10px rgba(0,0,0,0.3)';
+            }
+        });
+    }
+
+    // Active nav link tracking
+    const sections = document.querySelectorAll('section');
+    const navLinks = document.querySelectorAll('.nav-links a');
+
+    if (sections.length && navLinks.length) {
+        window.addEventListener('scroll', function () {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (window.scrollY >= (sectionTop - 100)) {
+                    current = section.getAttribute('id');
+                }
+            });
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === `#${current}`) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    }
+}
+
+// ════════════════════════════════════════════
+// INITIALIZE MODAL
+// ════════════════════════════════════════════
+function initializeModal() {
+    // Make sure modal functions are globally accessible
+    window.openLoginModal = openLoginModal;
+    window.closeLoginModal = closeLoginModal;
+    window.handleOverlayClick = handleOverlayClick;
+    window.selectRole = selectRole;
+    window.goBack = goBack;
+    window.togglePassword = togglePassword;
+    window.handleLogin = handleLogin;
+    window.handleCashierTypeChange = handleCashierTypeChange;
+}
+
+// ════════════════════════════════════════════
+// INITIALIZE SLIDER
+// ════════════════════════════════════════════
+function initializeSlider() {
+    const navBtns = document.querySelectorAll('.slider-nav-btn');
+    const dots = document.querySelectorAll('.slider-dot');
+
+    if (navBtns.length) {
+        navBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const slideIndex = parseInt(btn.getAttribute('data-slide'));
+                if (!isNaN(slideIndex)) {
+                    showSlide(slideIndex);
+                }
+            });
+        });
+    }
+
+    if (dots.length) {
+        dots.forEach(dot => {
+            dot.addEventListener('click', () => {
+                const slideIndex = parseInt(dot.getAttribute('data-slide'));
+                if (!isNaN(slideIndex)) {
+                    showSlide(slideIndex);
+                }
+            });
+        });
+    }
+}
+
+// ════════════════════════════════════════════
+// INITIALIZE REAL-TIME VALIDATION
+// ════════════════════════════════════════════
+function initializeRealTimeValidation() {
+    const forms = ['contactForm', 'ownerRegForm'];
+
+    forms.forEach(formId => {
+        const form = document.getElementById(formId);
+        if (form) {
+            const inputs = form.querySelectorAll('input, select, textarea');
+            inputs.forEach(input => {
+                input.addEventListener('input', function () {
+                    this.classList.remove('error');
+                    // Find associated error span
+                    const errorId = this.id + 'Error';
+                    const errorSpan = document.getElementById(errorId);
+                    if (errorSpan) {
+                        errorSpan.classList.remove('show');
+                    }
+                });
+            });
+        }
+    });
+}
+
+// ════════════════════════════════════════════
+// SLIDER FUNCTIONALITY
+// ════════════════════════════════════════════
+let currentSlide = 0;
+
+function showSlide(index) {
+    const slides = document.querySelectorAll('.contact-slide');
+    const navBtns = document.querySelectorAll('.slider-nav-btn');
+    const dots = document.querySelectorAll('.slider-dot');
+
+    if (!slides.length) return;
+
+    // Hide all slides
+    slides.forEach((slide, i) => {
+        slide.classList.remove('active');
+        slide.classList.remove('prev');
+        if (i < index) {
+            slide.classList.add('prev');
+        }
+    });
+
+    // Show current slide
+    if (slides[index]) {
+        slides[index].classList.add('active');
+    }
+
+    // Update navigation buttons
+    navBtns.forEach((btn, i) => {
+        if (i === index) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+
+    // Update dots
+    dots.forEach((dot, i) => {
+        if (i === index) {
+            dot.classList.add('active');
+        } else {
+            dot.classList.remove('active');
+        }
+    });
+
+    currentSlide = index;
+}
+
+// ════════════════════════════════════════════
+// MODAL FUNCTIONS
+// ════════════════════════════════════════════
+function openLoginModal() {
+    console.log('Opening login modal');
+    const modal = document.getElementById('loginModal');
+    if (modal) {
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        showStep('role');
+        // Reset form
+        const emailInput = document.getElementById('emailInput');
+        const passwordInput = document.getElementById('passwordInput');
+        if (emailInput) emailInput.value = '';
+        if (passwordInput) passwordInput.value = '';
+        hideError();
+    } else {
+        console.error('Login modal not found');
+    }
+}
+
+function closeLoginModal() {
+    console.log('Closing login modal');
+    const modal = document.getElementById('loginModal');
+    if (modal) {
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+        setTimeout(() => {
+            showStep('role');
+            selectedRole = null;
+            const emailInput = document.getElementById('emailInput');
+            const passwordInput = document.getElementById('passwordInput');
+            const cashierType = document.getElementById('cashierTypeInput');
+            if (emailInput) emailInput.value = '';
+            if (passwordInput) passwordInput.value = '';
+            if (cashierType) cashierType.value = '';
+            document.getElementById('cashierTypeGroup').style.display = 'none';
+            hideError();
+        }, 300);
+    }
+}
+
+function handleOverlayClick(e) {
+    if (e.target === document.getElementById('loginModal')) {
+        closeLoginModal();
+    }
+}
+
+// Close modal on Escape key
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+        closeLoginModal();
+        closeRegModal();
+    }
+});
+
+function showStep(step) {
+    const stepRole = document.getElementById('step-role');
+    const stepLogin = document.getElementById('step-login');
+
+    if (stepRole) stepRole.style.display = step === 'role' ? 'block' : 'none';
+    if (stepLogin) stepLogin.style.display = step === 'login' ? 'block' : 'none';
+}
+
+// ════════════════════════════════════════════
+// ROLE CONFIG
+// ════════════════════════════════════════════
+let selectedRole = null;
+
+const ROLES = {
+    admin: {
+        label: 'Admin',
+        icon: 'fas fa-user-shield',
+        subtitle: 'System administrator — full access',
+        backendRole: 'admin',
+        redirect: 'http://localhost:5173/admin/dashboard',
+    },
+    owner: {
+        label: 'Parking Owner',
+        icon: 'fas fa-building',
+        subtitle: 'Manage your parking site and revenue',
+        backendRole: 'parking_owner',
+        redirect: 'http://localhost:5173/owner/dashboard',
+    },
+    cashier: {
+        label: 'Cashier',
+        icon: 'fas fa-cash-register',
+        subtitle: 'Handle entries, exits and payments',
+        backendRole: null,
+        redirect: null,
+    },
+};
+
+const CASHIER_REDIRECTS = {
+    entry_cashier: 'http://localhost:5173/cashier/entry',
+    exit_cashier: 'http://localhost:5173/cashier/exit',
+};
+
+function selectRole(role) {
+    console.log('Role selected:', role);
+    selectedRole = role;
+    const cfg = ROLES[role];
+
+    if (!cfg) return;
+
+    const badge = document.getElementById('roleBadge');
+    if (badge) {
+        badge.className = `role-badge ${role}`;
+        badge.innerHTML = `<i class="${cfg.icon}"></i> ${cfg.label}`;
+    }
+
+    const roleSubtitle = document.getElementById('roleSubtitle');
+    if (roleSubtitle) roleSubtitle.textContent = cfg.subtitle;
+
+    const cashierGroup = document.getElementById('cashierTypeGroup');
+    if (role === 'cashier') {
+        if (cashierGroup) cashierGroup.style.display = 'block';
+    } else {
+        if (cashierGroup) cashierGroup.style.display = 'none';
+    }
+
+    showStep('login');
+    setTimeout(() => {
+        if (role === 'cashier') {
+            const cashierInput = document.getElementById('cashierTypeInput');
+            if (cashierInput) cashierInput.focus();
+        } else {
+            const emailInput = document.getElementById('emailInput');
+            if (emailInput) emailInput.focus();
+        }
+    }, 50);
+}
+
+function handleCashierTypeChange() {
+    const type = document.getElementById('cashierTypeInput').value;
+    if (type) {
+        localStorage.setItem('cashier_type', type);
+    }
+}
+
+function goBack() {
+    showStep('role');
+    selectedRole = null;
+    hideError();
+    const cashierInput = document.getElementById('cashierTypeInput');
+    if (cashierInput) cashierInput.value = '';
+    const cashierGroup = document.getElementById('cashierTypeGroup');
+    if (cashierGroup) cashierGroup.style.display = 'none';
+    localStorage.removeItem('cashier_type');
+}
+
+function togglePassword() {
+    const input = document.getElementById('passwordInput');
+    const icon = document.getElementById('eyeIcon');
+    if (input && icon) {
+        const isHidden = input.type === 'password';
+        input.type = isHidden ? 'text' : 'password';
+        icon.className = isHidden ? 'fas fa-eye-slash' : 'fas fa-eye';
+    }
+}
+
+function showError(msg) {
+    const errorEl = document.getElementById('loginError');
+    const errorMsg = document.getElementById('loginErrorMsg');
+    if (errorEl && errorMsg) {
+        errorMsg.textContent = msg;
+        errorEl.style.display = 'flex';
+    }
+}
+
+function hideError() {
+    const errorEl = document.getElementById('loginError');
+    if (errorEl) errorEl.style.display = 'none';
+}
+
+// ════════════════════════════════════════════
+// LOGIN HANDLER
+// ════════════════════════════════════════════
+// Replace the handleLogin function in your script.js
+async function handleLogin(e) {
+    e.preventDefault();
+    console.log('Login attempted');
+    hideError();
+
+    const email = document.getElementById('emailInput').value.trim();
+    const password = document.getElementById('passwordInput').value;
+    const errorDiv = document.getElementById('loginError');
+
+    if (!email || !password) {
+        errorDiv.textContent = 'Please enter email and password';
+        errorDiv.style.display = 'block';
+        return;
+    }
+
+    if (selectedRole === 'cashier') {
+        const cashierType = document.getElementById('cashierTypeInput').value;
+        if (!cashierType) {
+            errorDiv.textContent = 'Please select cashier type';
+            errorDiv.style.display = 'block';
+            return;
+        }
+    }
+
+    // DEMO LOGIN - No backend required for testing
+    // This allows you to test the frontend without backend
+
+    let redirectUrl = '';
+    let userRole = '';
+
+    if (selectedRole === 'admin') {
+        // Demo admin login
+        if (email === 'admin@test.com' && password === 'admin123') {
+            redirectUrl = 'http://localhost:5173/admin/dashboard';
+            userRole = 'admin';
+        } else {
+            errorDiv.textContent = 'Invalid admin credentials. Use: admin@test.com / admin123';
+            errorDiv.style.display = 'block';
+            return;
+        }
+    }
+    else if (selectedRole === 'owner') {
+        // Demo owner login
+        if (email === 'owner@test.com' && password === 'owner123') {
+            redirectUrl = 'http://localhost:5173/owner/dashboard';
+            userRole = 'parking_owner';
+        } else {
+            errorDiv.textContent = 'Invalid owner credentials. Use: owner@test.com / owner123';
+            errorDiv.style.display = 'block';
+            return;
+        }
+    }
+    else if (selectedRole === 'cashier') {
+        const cashierType = document.getElementById('cashierTypeInput').value;
+        // Demo cashier login
+        if (email === 'cashier@test.com' && password === 'cashier123') {
+            if (cashierType === 'entry_cashier') {
+                redirectUrl = 'http://localhost:5173/cashier/entry';
+                userRole = 'entry_cashier';
+            } else if (cashierType === 'exit_cashier') {
+                redirectUrl = 'http://localhost:5173/cashier/exit';
+                userRole = 'exit_cashier';
+            }
+        } else {
+            errorDiv.textContent = 'Invalid cashier credentials. Use: cashier@test.com / cashier123';
+            errorDiv.style.display = 'block';
+            return;
+        }
+    }
+
+    if (!redirectUrl) {
+        errorDiv.textContent = 'Invalid credentials. Please check and try again.';
+        errorDiv.style.display = 'block';
+        return;
+    }
+
+    // Store demo tokens
+    const params = new URLSearchParams({
+        access_token: 'demo_token_' + Date.now(),
+        refresh_token: 'demo_refresh_token',
+        user_role: userRole,
+        user_name: email.split('@')[0],
+        user_email: email,
+        site_id: '1'
+    });
+
+    console.log('Redirecting to:', `${redirectUrl}?${params.toString()}`);
+
+    // Show loading
+    const submitBtn = document.querySelector('#step-login .login-submit-btn');
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Redirecting...';
+    submitBtn.disabled = true;
+
+    setTimeout(() => {
+        window.location.href = `${redirectUrl}?${params.toString()}`;
+    }, 500);
+}
+
+// new function code handle login abo
+async function handleLogin(e) {
+    e.preventDefault();
+    console.log('Login attempted');
+    hideError();
+
+    const email = document.getElementById('emailInput').value.trim();
+    const password = document.getElementById('passwordInput').value;
+    const btn = document.getElementById('submitBtn');
+    const btnText = document.getElementById('btnText');
+    const spinner = document.getElementById('btnSpinner');
+
+    // Validate inputs
+    if (!email) {
+        showError('Please enter your email address');
+        return;
+    }
+    if (!password) {
+        showError('Please enter your password');
+        return;
+    }
+
+    // Cashier type validation
+    if (selectedRole === 'cashier') {
+        const cashierType = document.getElementById('cashierTypeInput').value;
+        if (!cashierType) {
+            showError('Please select your cashier type (Entry/Exit)');
+            return;
+        }
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        if (btnText) btnText.textContent = 'Signing in...';
+        if (spinner) spinner.style.display = 'inline-block';
+    }
+
+    try {
+        console.log('Sending login request to:', `${API_BASE_URL}/api/auth/login/`);
+
+        const response = await fetch(`${API_BASE_URL}/api/auth/login/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password }),
+        });
+
+        const data = await response.json();
+        console.log('Login response:', data);
+
+        if (!response.ok) {
+            throw new Error(data.error || data.detail || data.message || 'Invalid email or password');
+        }
+
+        const returnedRole = data.role;
+
+        // Role validation
+        if (selectedRole === 'admin' && returnedRole !== 'admin') {
+            throw new Error('This account does not have Admin access.');
+        }
+        if (selectedRole === 'owner' && returnedRole !== 'parking_owner') {
+            throw new Error('This account does not have Parking Owner access.');
+        }
+        if (selectedRole === 'cashier') {
+            const cashierType = document.getElementById('cashierTypeInput').value;
+            if (!['entry_cashier', 'exit_cashier'].includes(returnedRole)) {
+                throw new Error('This account does not have Cashier access.');
+            }
+            if (returnedRole !== cashierType) {
+                const selectedLabel = cashierType === 'entry_cashier' ? 'Entry Gate Cashier' : 'Exit Gate Cashier';
+                const actualLabel = returnedRole === 'entry_cashier' ? 'Entry Gate Cashier' : 'Exit Gate Cashier';
+                throw new Error(`This account is registered as ${actualLabel}, not ${selectedLabel}.`);
+            }
+        }
+
+        // Determine redirect URL
+        let redirectUrl;
+        if (selectedRole === 'admin') {
+            redirectUrl = ROLES.admin.redirect;
+        } else if (selectedRole === 'owner') {
+            redirectUrl = ROLES.owner.redirect;
+        } else {
+            const cashierType = document.getElementById('cashierTypeInput').value;
+            redirectUrl = CASHIER_REDIRECTS[cashierType];
+        }
+
+        // Build redirect URL with tokens
+        const params = new URLSearchParams({
+            access_token: data.tokens?.access || data.access,
+            refresh_token: data.tokens?.refresh || data.refresh || '',
+            user_role: data.role,
+            user_name: data.name || '',
+            user_email: email,
+            site_id: data.site_id || '',
+            user_id: data.user_id || '',
+        });
+
+        console.log('Redirecting to:', `${redirectUrl}?${params.toString()}`);
+
+        setTimeout(() => {
+            window.location.href = `${redirectUrl}?${params.toString()}`;
+        }, 300);
+
+    } catch (err) {
+        console.error('Login error:', err);
+        if (err.name === 'TypeError' && err.message.includes('fetch')) {
+            showError('Cannot connect to server. Please make sure the backend is running (python manage.py runserver)');
+        } else {
+            showError(err.message || 'Login failed. Please try again.');
+        }
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            if (btnText) btnText.textContent = 'Sign In';
+            if (spinner) spinner.style.display = 'none';
+        }
+    }
+}
+
+// ════════════════════════════════════════════
+// OWNER REGISTRATION MODAL FUNCTIONS
+// ════════════════════════════════════════════
+function openRegistrationForm() {
+    console.log('Opening registration modal');
+    const modal = document.getElementById('ownerRegModal');
+    if (modal) {
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+function closeRegModal() {
+    const modal = document.getElementById('ownerRegModal');
+    if (modal) {
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+}
+
+function handleRegOverlayClick(e) {
+    if (e.target === document.getElementById('ownerRegModal')) {
+        closeRegModal();
+    }
+}
+
+// Make functions globally accessible
+window.openRegistrationForm = openRegistrationForm;
+window.closeRegModal = closeRegModal;
+window.handleRegOverlayClick = handleRegOverlayClick;
+window.submitQuery = submitQuery;
+window.submitOwnerRegistration = submitOwnerRegistration;
+
+// ════════════════════════════════════════════
+// VALIDATION FUNCTIONS
+// ════════════════════════════════════════════
+function isValidEmail(email) {
+    const emailRegex = /^[^\s@]+@([^\s@.,]+\.)+[^\s@.,]{2,}$/;
+    return emailRegex.test(email);
+}
+
+function isValidPhone(phone) {
+    const phoneRegex = /^(03\d{9}|\d{11})$/;
+    return phoneRegex.test(phone);
+}
+
+function isValidName(name) {
+    return name && name.length >= 3 && /^[a-zA-Z\s]+$/.test(name);
+}
+
+function showErrorMsg(elementId, message) {
+    const errorSpan = document.getElementById(elementId);
+    if (errorSpan) {
+        errorSpan.textContent = message;
+        errorSpan.classList.add('show');
+        const input = errorSpan.previousElementSibling?.querySelector('input, select, textarea');
+        if (input) input.classList.add('error');
+    }
+}
+
+function hideErrorMsg(elementId) {
+    const errorSpan = document.getElementById(elementId);
+    if (errorSpan) {
+        errorSpan.classList.remove('show');
+        const input = errorSpan.previousElementSibling?.querySelector('input, select, textarea');
+        if (input) input.classList.remove('error');
+    }
+}
+
+function clearFormErrors(formId) {
+    const form = document.getElementById(formId);
+    if (form) {
+        const errors = form.querySelectorAll('.error-msg');
+        errors.forEach(error => error.classList.remove('show'));
+        const inputs = form.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => input.classList.remove('error'));
+    }
+}
+
+// ════════════════════════════════════════════
+// CONTACT QUERY SUBMISSION
+// ════════════════════════════════════════════
+window.submitQuery = async function (event) {
+    event.preventDefault()
+    console.log('Submitting contact query')
+
+    clearFormErrors('contactForm')
+
+    const name = document.getElementById('queryName').value.trim()
+    const email = document.getElementById('queryEmail').value.trim()
+    const phone = document.getElementById('queryPhone').value.trim()
+    const queryType = document.getElementById('queryType').value
+    const message = document.getElementById('queryMessage').value.trim()
+
+    // Validation - tumhara existing code
+    let isValid = true
+    if (!name) { showErrorMsg('nameError', 'Full name is required'); isValid = false }
+    if (!email) { showErrorMsg('emailError', 'Email is required'); isValid = false }
+    if (!queryType) { showErrorMsg('typeError', 'Please select query type'); isValid = false }
+    if (!message) { showErrorMsg('messageError', 'Message is required'); isValid = false }
+    if (!isValid) return
+
+    // Loading state
+    const submitBtn = document.querySelector('#contactForm .submit-btn')
+    const btnSpan = submitBtn.querySelector('span')
+    const spinner = submitBtn.querySelector('.btn-spinner')
+    submitBtn.disabled = true
+    btnSpan.textContent = 'Sending...'
+    spinner.style.display = 'inline-block'
+
+    // Supabase Insert
+    const { error } = await supabase.from('contact_queries').insert([{
+        name,
+        email,
+        phone: phone || null,
+        query_type: queryType,
+        message,
+        status: 'pending'
+    }])
+
+    submitBtn.disabled = false
+    btnSpan.textContent = 'Send Message'
+    spinner.style.display = 'none'
+
+    const successDiv = document.getElementById('contactSuccessMsg')
+    if (error) {
+        successDiv.innerHTML = 'Error: ' + error.message
+        successDiv.style.color = 'red'
+        successDiv.style.display = 'block'
+    } else {
+        successDiv.innerHTML = '✓ Thank you! We\'ll respond within 24 hours.'
+        successDiv.style.color = 'green'
+        successDiv.style.display = 'block'
+        document.getElementById('contactForm').reset()
+
+        // Agar Owner Registration select kiya to owner wala tab khol do
+        if (queryType === 'owner_registration') {
+            setTimeout(() => showSlide(1), 1500) // Slide 1 = Owner Registration
+        }
+
+        setTimeout(() => { successDiv.style.display = 'none' }, 5000)
+    }
+}
+
+// ════════════════════════════════════════════
+// OWNER REGISTRATION SUBMISSION
+// ════════════════════════════════════════════
+async function submitOwnerRegistration(event) {
+    event.preventDefault();
+    console.log('Submitting owner registration');
+
+    clearFormErrors('ownerRegForm');
+
+    const name = document.getElementById('regName').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const phone = document.getElementById('regPhone').value.trim();
+    const city = document.getElementById('regCity').value.trim();
+    const siteName = document.getElementById('regSiteName').value.trim();
+    const address = document.getElementById('regAddress').value.trim();
+    const totalSlots = document.getElementById('regSlots').value;
+
+    let isValid = true;
+
+    if (!name) {
+        showErrorMsg('regNameError', 'Full name required');
+        isValid = false;
+    } else if (!isValidName(name)) {
+        showErrorMsg('regNameError', 'Valid name required (min 3 letters)');
+        isValid = false;
+    }
+
+    if (!email) {
+        showErrorMsg('regEmailError', 'Email required');
+        isValid = false;
+    } else if (!isValidEmail(email)) {
+        showErrorMsg('regEmailError', 'Valid email required');
+        isValid = false;
+    }
+
+    if (!phone) {
+        showErrorMsg('regPhoneError', 'Phone number required');
+        isValid = false;
+    } else if (!isValidPhone(phone)) {
+        showErrorMsg('regPhoneError', 'Valid Pakistan number required (e.g., 03001234567)');
+        isValid = false;
+    }
+
+    if (!city) {
+        showErrorMsg('regCityError', 'City required');
+        isValid = false;
+    }
+
+    if (!siteName) {
+        showErrorMsg('regSiteError', 'Site name required');
+        isValid = false;
+    }
+
+    if (!address) {
+        showErrorMsg('regAddressError', 'Address required');
+        isValid = false;
+    } else if (address.length < 10) {
+        showErrorMsg('regAddressError', 'Please provide complete address');
+        isValid = false;
+    }
+
+    if (!totalSlots) {
+        showErrorMsg('regSlotsError', 'Number of slots required');
+        isValid = false;
+    } else if (totalSlots < 5) {
+        showErrorMsg('regSlotsError', 'Minimum 5 slots required');
+        isValid = false;
+    } else if (totalSlots > 500) {
+        showErrorMsg('regSlotsError', 'Maximum 500 slots allowed');
+        isValid = false;
+    }
+
+    if (!isValid) return;
+
+    // Show loading
+    const submitBtn = document.querySelector('#ownerRegForm .submit-btn');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+    }
+
+    // Simulate API call
+    setTimeout(() => {
+        const regData = {
+            id: Date.now(),
+            name, email, phone, city, site_name: siteName, address,
+            total_slots: parseInt(totalSlots),
+            status: 'pending_approval',
+            submitted_at: new Date().toISOString()
+        };
+
+        let registrations = JSON.parse(localStorage.getItem('owner_registrations') || '[]');
+        registrations.push(regData);
+        localStorage.setItem('owner_registrations', JSON.stringify(registrations));
+
+        const successDiv = document.getElementById('regSuccessMsg');
+        if (successDiv) {
+            successDiv.innerHTML = '✓ Registration submitted! Admin will contact you within 48 hours.';
+            successDiv.style.display = 'block';
+        }
+
+        document.getElementById('ownerRegForm').reset();
+
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Registration';
+        }
+
+        // Switch to support slide
+        setTimeout(() => showSlide(2), 2000);
+        setTimeout(() => {
+            if (successDiv) successDiv.style.display = 'none';
+        }, 5000);
+    }, 1000);
+}
