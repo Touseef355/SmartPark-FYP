@@ -50,12 +50,37 @@ body {
 /* HERO */
 .hero {
     height: 100vh;
-    background: url('https://images.unsplash.com/photo-1506521781263-d8422e82f27a') center/cover;
     position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
+    overflow: hidden;
+}
+
+.hero-slider-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+}
+
+.hero-slide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    opacity: 0;
+    transition: opacity 1.5s ease-in-out;
+}
+
+.hero-slide.active {
+    opacity: 1;
 }
 
 .overlay {
@@ -63,12 +88,14 @@ body {
     width: 100%;
     height: 100%;
     background: rgba(10, 10, 30, 0.75);
+    z-index: 1;
 }
 
 .hero-content {
     position: relative;
     color: white;
     max-width: 800px;
+    z-index: 2;
 }
 
 .hero-title {
@@ -1089,4 +1116,70 @@ body {
     opacity: 0.6;
     cursor: not-allowed;
     transform: none;
+}
+
+/* Credentials Modal Card Styles */
+.credentials-box {
+    max-width: 500px !important;
+}
+
+.credentials-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 20px;
+    margin: 20px 0;
+    text-align: left;
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05);
+}
+
+.cred-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.cred-row:last-child {
+    border-bottom: none;
+}
+
+.cred-label {
+    font-size: 13px;
+    color: #888;
+    font-weight: 500;
+}
+
+.cred-val {
+    font-size: 14px;
+    color: #fff;
+    font-weight: 600;
+    font-family: monospace;
+    letter-spacing: 0.5px;
+}
+
+.role-highlight {
+    color: #a855f7;
+    background: rgba(168, 85, 247, 0.12);
+    padding: 2px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+}
+
+.password-val {
+    color: #00d4ff;
+}
+
+/* Custom Success Icon for credentials */
+.credentials-icon-wrap {
+    width: 70px;
+    height: 70px;
+    background: rgba(0, 212, 255, 0.1);
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
 }

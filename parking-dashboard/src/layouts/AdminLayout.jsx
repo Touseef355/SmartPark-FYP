@@ -3,21 +3,23 @@ import { Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, MapPin, Users, User, CreditCard,
   FileText, Shield, Settings, LogOut, Menu, X, Bot, RotateCcw, Brain,
-  MessageSquare, TrendingUp, UserCheck
+  MessageSquare, TrendingUp, UserCheck, Bell
 } from 'lucide-react'
 import { logout, getUser } from '../utils/auth'
+import { useNotifications } from '../utils/NotificationContext'
 
 export default function AdminLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const location = useLocation()
   const { name, initials } = getUser()
+  const { notifications } = useNotifications()
 
   const navItems = [
     { name: 'Dashboard',      href: '/admin/dashboard',                    icon: LayoutDashboard },
     { name: 'Parking Sites',  href: '/admin/dashboard/parking-sites',      icon: MapPin          },
     { name: 'Owner Accounts', href: '/admin/dashboard/owner-accounts',     icon: Users           },
     { name: 'User Accounts',  href: '/admin/dashboard/user-accounts',      icon: User            },
-    { name: 'Queries',        href: '/admin/dashboard/queries',             icon: MessageSquare   },
+    { name: 'Queries',        href: '/admin/dashboard/queries',             icon: MessageSquare, badge: notifications.totalPending },
     { name: 'Payments',       href: '/admin/dashboard/payments',            icon: CreditCard      },
     { name: 'Refunds',        href: '/admin/dashboard/refunds',             icon: RotateCcw       },
     { name: 'Reports',        href: '/admin/dashboard/reports',             icon: FileText        },
@@ -64,8 +66,50 @@ export default function AdminLayout({ children }) {
                     : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
                 }`}
               >
-                <item.icon className="w-5 h-5 flex-shrink-0" />
-                {sidebarOpen && <span className="text-sm font-medium">{item.name}</span>}
+                <div className="relative flex-shrink-0">
+                  <item.icon className="w-5 h-5" />
+                  {/* Badge for notification count */}
+                  {item.badge > 0 && (
+                    <span style={{
+                      position: 'absolute',
+                      top: '-6px',
+                      right: '-8px',
+                      backgroundColor: '#ef4444',
+                      color: '#fff',
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      minWidth: '18px',
+                      height: '18px',
+                      borderRadius: '9px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '0 4px',
+                      lineHeight: 1,
+                      boxShadow: '0 2px 4px rgba(239,68,68,0.4)',
+                      animation: 'badgePulse 2s infinite',
+                    }}>
+                      {item.badge > 99 ? '99+' : item.badge}
+                    </span>
+                  )}
+                </div>
+                {sidebarOpen && (
+                  <span className="text-sm font-medium flex-1">{item.name}</span>
+                )}
+                {/* Also show badge text when sidebar is open */}
+                {sidebarOpen && item.badge > 0 && (
+                  <span style={{
+                    backgroundColor: '#ef4444',
+                    color: '#fff',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    padding: '2px 8px',
+                    borderRadius: '10px',
+                    lineHeight: 1.2,
+                  }}>
+                    {item.badge}
+                  </span>
+                )}
               </Link>
             )
           })}
@@ -97,6 +141,14 @@ export default function AdminLayout({ children }) {
           {children}
         </div>
       </main>
+
+      {/* Badge pulse animation */}
+      <style>{`
+        @keyframes badgePulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.15); }
+        }
+      `}</style>
     </div>
   )
 }

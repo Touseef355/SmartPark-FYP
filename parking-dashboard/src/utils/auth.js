@@ -31,5 +31,5 @@ export function logout() {
   localStorage.removeItem("user_id")
   localStorage.removeItem("user_email")
   localStorage.removeItem("cashier_type")
-  window.location.href = "http://127.0.0.1:5500/index.html"
+  window.location.href = "http://127.0.0.1:8000/landing/index.html"
 }

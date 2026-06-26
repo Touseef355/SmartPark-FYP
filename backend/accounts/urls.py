@@ -17,6 +17,13 @@ from .views import (
     AdminToggleUserStatusView,
     AdminApproveOwnerView,
     AdminDashboardStatsView,
+    # Registration query views
+    SubmitRegistrationQueryView,
+    AdminRegistrationQueryListView,
+    AdminApproveOnboardView,
+    AdminRejectQueryView,
+    AdminRespondToQueryView,
+    AdminNotificationCountView,
 )
 
 urlpatterns = [
@@ -33,17 +40,27 @@ urlpatterns = [
     path("password/confirm/", PasswordResetConfirmView.as_view(), name="password-confirm"),
     path("change-password/", ChangePasswordView.as_view(), name="change-password"),
 
+    # ── Public: Landing page query submission ──────────────────────────────
+    path("registration-query/", SubmitRegistrationQueryView.as_view(), name="registration-query"),
+
     # ── Admin ──────────────────────────────────────────────────────────────
-    # GET  /api/auth/admin/users/              → list all users
-    # GET  /api/auth/admin/users/?role=parking_owner&status=pending  → filter
     path("admin/users/", AdminUserListView.as_view(), name="admin-user-list"),
-
-    # PATCH /api/auth/admin/users/<uuid>/toggle/  body: {"action": "block"|"unblock"}
     path("admin/users/<uuid:pk>/toggle/", AdminToggleUserStatusView.as_view(), name="admin-toggle-user"),
-
-    # PATCH /api/auth/admin/owners/<uuid>/approve/  body: {"action": "approve"|"reject"}
     path("admin/owners/<uuid:pk>/approve/", AdminApproveOwnerView.as_view(), name="admin-approve-owner"),
-
-    # GET /api/auth/admin/stats/
     path("admin/stats/", AdminDashboardStatsView.as_view(), name="admin-dashboard-stats"),
+
+    # GET  /api/auth/admin/registration-queries/
+    path("admin/registration-queries/", AdminRegistrationQueryListView.as_view(), name="admin-registration-queries"),
+
+    # POST /api/auth/admin/queries/<id>/approve-onboard/
+    path("admin/queries/<int:query_id>/approve-onboard/", AdminApproveOnboardView.as_view(), name="admin-approve-onboard"),
+
+    # POST /api/auth/admin/queries/<id>/reject/
+    path("admin/queries/<int:query_id>/reject/", AdminRejectQueryView.as_view(), name="admin-reject-query"),
+
+    # POST /api/auth/admin/queries/<id>/respond/
+    path("admin/queries/<int:query_id>/respond/", AdminRespondToQueryView.as_view(), name="admin-respond-query"),
+
+    # GET /api/auth/admin/notifications/count/
+    path("admin/notifications/count/", AdminNotificationCountView.as_view(), name="admin-notification-count"),
 ]

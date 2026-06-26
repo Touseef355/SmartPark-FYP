@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from .models import OwnerRegistrationQuery
 
 User = get_user_model()
 
@@ -26,3 +27,14 @@ class RegisterSerializer(serializers.ModelSerializer):
             user.is_approved = False
             user.save(update_fields=["is_approved"])
         return user
+
+
+class OwnerRegistrationQuerySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OwnerRegistrationQuery
+        fields = [
+            "id", "full_name", "email", "phone_number",
+            "query_type", "proposed_site_name", "site_capacity",
+            "message", "admin_response", "status", "created_at",
+        ]
+        read_only_fields = ["id", "status", "admin_response", "created_at"]

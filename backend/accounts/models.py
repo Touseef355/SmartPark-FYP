@@ -94,4 +94,44 @@ def free_slot_on_account_delete(sender,instance,**kwargs):
         slot=booking.parking_slot
         slot.is_occupied=False
         slot.save()
-        
+
+
+class OwnerRegistrationQuery(models.Model):
+    """
+    Stores contact-form and owner-registration queries submitted from the
+    landing page.  Admin can later approve owner-registration queries which
+    triggers automatic user + parking-site creation.
+    """
+    QUERY_TYPE_CHOICES = (
+        ("owner_registration", "Request Parking Owner Account Registration"),
+        ("general_support", "General Support"),
+    )
+    STATUS_CHOICES = (
+        ("PENDING", "Pending"),
+        ("APPROVED", "Approved"),
+        ("REJECTED", "Rejected"),
+        ("RESOLVED", "Resolved"),
+    )
+
+    full_name = models.CharField(max_length=150)
+    email = models.EmailField()
+    phone_number = models.CharField(max_length=20, blank=True, default="")
+    query_type = models.CharField(
+        max_length=30, choices=QUERY_TYPE_CHOICES, default="general_support"
+    )
+    proposed_site_name = models.CharField(max_length=200, blank=True, default="")
+    site_capacity = models.IntegerField(null=True, blank=True)
+    message = models.TextField(blank=True, default="")
+    admin_response = models.TextField(blank=True, default="",
+        help_text="Admin's response to the query (for general support queries)")
+    status = models.CharField(
+        max_length=10, choices=STATUS_CHOICES, default="PENDING"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "owner_registration_queries"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.full_name} — {self.get_query_type_display()} ({self.status})"

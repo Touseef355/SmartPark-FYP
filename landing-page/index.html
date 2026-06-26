@@ -10,14 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 
-    <!-- REMOVE THIS DUPLICATE - Line 14-15 -->
-    <script type="module">
-        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
-        window.supabase = createClient(
-            'https://yvnjawshurzivvkkzzzd.supabase.co',
-            'sb_publishable_3DGA6YVAaZwCCe82gDTZBA_UROwbiGF'
-        )
-    </script>
+    <!-- Supabase script removed, migrated to Django backend -->
 </head>
 
 <body>
@@ -36,6 +29,12 @@
     </nav>
 
     <section id="home" class="hero">
+        <div class="hero-slider-container">
+            <div class="hero-slide active" style="background-image: url('images/hero_parking_1_1782314906185.png')"></div>
+            <div class="hero-slide" style="background-image: url('images/hero_parking_2_1782315014950.png')"></div>
+            <div class="hero-slide" style="background-image: url('images/hero_parking_3_1782315035352.png')"></div>
+            <div class="hero-slide" style="background-image: url('https://images.unsplash.com/photo-1506521781263-d8422e82f27a')"></div>
+        </div>
         <div class="overlay"></div>
         <div class="hero-content">
             <h1 class="hero-title">
@@ -192,12 +191,8 @@
                                         <i class="fas fa-tag"></i>
                                         <select id="queryType">
                                             <option value="">Select query type</option>
-                                            <option value="general"> General Inquiry</option>
-                                            <option value="owner_registration"> Owner Registration</option>
-                                            <option value="subscription"> Subscription Plan</option>
-                                            <option value="report"> Report Issue</option>
-                                            <option value="technical"> Technical Support</option>
-                                            <option value="partnership"> Partnership</option>
+                                            <option value="owner_registration">Request Parking Owner Account Registration</option>
+                                            <option value="general_support">General Support</option>
                                         </select>
                                     </div>
                                     <span class="error-msg" id="typeError"></span>
@@ -537,82 +532,60 @@
     </div>
     <!-- ═══════════ End Modal ═══════════ -->
 
+    <!-- ═══════════ SUCCESS MODAL ═══════════ -->
+    <div class="modal-overlay" id="successModal" onclick="closeSuccessModal(event)">
+        <div class="modal-box text-center">
+            <div class="success-icon-wrap mb-4">
+                <i class="fas fa-check-circle" style="font-size: 60px; color: #48bb78;"></i>
+            </div>
+            <h2 style="color: #fff; margin-bottom: 10px;">Success!</h2>
+            <p id="successModalMsg" style="color: #ccc; margin-bottom: 25px;"></p>
+            <button class="btn-primary" onclick="closeSuccessModal(null, true)">Okay</button>
+        </div>
+    </div>
+    <!-- ═══════════ End Success Modal ═══════════ -->
+
+    <!-- ═══════════ CREDENTIALS MODAL ═══════════ -->
+    <div class="modal-overlay" id="credentialsModal">
+        <div class="modal-box text-center credentials-box">
+            <div class="credentials-icon-wrap">
+                <i class="fas fa-key" style="font-size: 32px; color: #00d4ff;"></i>
+            </div>
+            <h2 style="color: #fff; margin-bottom: 10px; font-weight: 700;">Account Activated!</h2>
+            <p style="color: #ccc; margin-bottom: 20px; font-size: 13px;">Your parking owner account is active. Use these details to log in:</p>
+            
+            <div class="credentials-card">
+                <div class="cred-row">
+                    <span class="cred-label">Role:</span>
+                    <span class="cred-val role-highlight">Parking Owner</span>
+                </div>
+                <div class="cred-row">
+                    <span class="cred-label">Email:</span>
+                    <span class="cred-val" id="credEmailText">owner@example.com</span>
+                </div>
+                <div class="cred-row">
+                    <span class="cred-label">Password:</span>
+                    <span class="cred-val password-val" id="credPasswordText">TempPassword123</span>
+                </div>
+            </div>
+            
+            <div class="modal-buttons" style="margin-top: 25px; display: flex; gap: 12px; justify-content: center;">
+                <button class="submit-btn" id="copyCredsBtn" onclick="copyCredentials()" style="flex: 1; padding: 12px 16px;">
+                    <i class="fas fa-copy"></i> <span>Copy</span>
+                </button>
+                <button class="submit-btn" id="directLoginBtn" onclick="handleDirectLogin()" style="flex: 1; padding: 12px 16px; background: linear-gradient(135deg, #a855f7, #7e22ce);">
+                    <i class="fas fa-sign-in-alt"></i> <span>Login Now</span>
+                </button>
+            </div>
+            
+            <button class="modal-close" onclick="closeCredentialsModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+    <!-- ═══════════ End Credentials Modal ═══════════ -->
+
     <script src="script.js"></script>
-    <script type="module">
-        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
-
-        const supabase = createClient(
-            'https://yvnjawshurzivvkkzzzd.supabase.co',
-            'sb_publishable_3DGA6YVAaZwCCe82gDTZBA_UROwbiGF' // Supabase → Settings → API → anon public
-        )
-
-        // 1. OWNER REGISTRATION FORM - jo pehle wale screenshots me tha
-        const ownerRegForm = document.querySelector('#ownerRegisterForm')
-        ownerRegForm?.addEventListener('submit', async (e) => {
-            e.preventDefault()
-            const btn = e.target.querySelector('button[type="submit"]')
-            btn.disabled = true
-            btn.textContent = 'Submitting...'
-
-            const fd = new FormData(e.target)
-
-            const { error } = await supabase.from('owner_requests').insert([{
-                name: fd.get('full_name'),
-                email: fd.get('email'),
-                phone: fd.get('phone'),
-                city: fd.get('city'),
-                parking_name: fd.get('parking_site_name'),
-                site_address: fd.get('site_address'),
-                total_slots: parseInt(fd.get('total_slots')),
-                expected_revenue: fd.get('expected_revenue'),
-                status: 'pending'
-            }])
-
-            if (error) {
-                alert('Error: ' + error.message)
-                btn.disabled = false
-                btn.textContent = 'Submit Registration'
-            } else {
-                alert('Request submitted successfully! Payment confirm hone ke baad admin aapko email par credentials bhejega.')
-                e.target.reset()
-                btn.disabled = false
-                btn.textContent = 'Submit Registration'
-            }
-        })
-
-        // 2. OWNER LOGIN MODAL - Screenshot 2 wala
-        const ownerLoginForm = document.querySelector('#ownerLoginForm') // modal wale form ko ye id do
-        ownerLoginForm?.addEventListener('submit', async (e) => {
-            e.preventDefault()
-            const btn = e.target.querySelector('button[type="submit"]')
-            btn.disabled = true
-            btn.textContent = 'Signing In...'
-
-            const email = e.target.email.value
-            const password = e.target.password.value
-
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-
-            if (error) {
-                alert('Login Failed: ' + error.message)
-                btn.disabled = false
-                btn.textContent = 'Sign In'
-                return
-            }
-
-            // Role check - sirf owner login kar sakta hai
-            if (data.user.user_metadata?.role !== 'owner') {
-                await supabase.auth.signOut()
-                alert('Access denied. Ye account Parking Owner ka nahi hai.')
-                btn.disabled = false
-                btn.textContent = 'Sign In'
-                return
-            }
-
-            // Success - React owner dashboard par bhej do
-            window.location.href = 'http://localhost:5173/owner/dashboard'
-        })
-    </script>
 </body>
 
 </html>

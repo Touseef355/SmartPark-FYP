@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', function () {
     initializeModal();
     initializeSlider();
     initializeRealTimeValidation();
+    initializeHeroSlider();
 });
 
 // ════════════════════════════════════════════
@@ -138,6 +139,21 @@ function initializeRealTimeValidation() {
             });
         }
     });
+}
+
+// ════════════════════════════════════════════
+// HERO SLIDER
+// ════════════════════════════════════════════
+function initializeHeroSlider() {
+    const slides = document.querySelectorAll('.hero-slide');
+    if (!slides.length) return;
+    
+    let currentSlide = 0;
+    setInterval(() => {
+        slides[currentSlide].classList.remove('active');
+        currentSlide = (currentSlide + 1) % slides.length;
+        slides[currentSlide].classList.add('active');
+    }, 4000);
 }
 
 // ════════════════════════════════════════════
@@ -365,107 +381,6 @@ function hideError() {
 // ════════════════════════════════════════════
 // LOGIN HANDLER
 // ════════════════════════════════════════════
-// Replace the handleLogin function in your script.js
-async function handleLogin(e) {
-    e.preventDefault();
-    console.log('Login attempted');
-    hideError();
-
-    const email = document.getElementById('emailInput').value.trim();
-    const password = document.getElementById('passwordInput').value;
-    const errorDiv = document.getElementById('loginError');
-
-    if (!email || !password) {
-        errorDiv.textContent = 'Please enter email and password';
-        errorDiv.style.display = 'block';
-        return;
-    }
-
-    if (selectedRole === 'cashier') {
-        const cashierType = document.getElementById('cashierTypeInput').value;
-        if (!cashierType) {
-            errorDiv.textContent = 'Please select cashier type';
-            errorDiv.style.display = 'block';
-            return;
-        }
-    }
-
-    // DEMO LOGIN - No backend required for testing
-    // This allows you to test the frontend without backend
-
-    let redirectUrl = '';
-    let userRole = '';
-
-    if (selectedRole === 'admin') {
-        // Demo admin login
-        if (email === 'admin@test.com' && password === 'admin123') {
-            redirectUrl = 'http://localhost:5173/admin/dashboard';
-            userRole = 'admin';
-        } else {
-            errorDiv.textContent = 'Invalid admin credentials. Use: admin@test.com / admin123';
-            errorDiv.style.display = 'block';
-            return;
-        }
-    }
-    else if (selectedRole === 'owner') {
-        // Demo owner login
-        if (email === 'owner@test.com' && password === 'owner123') {
-            redirectUrl = 'http://localhost:5173/owner/dashboard';
-            userRole = 'parking_owner';
-        } else {
-            errorDiv.textContent = 'Invalid owner credentials. Use: owner@test.com / owner123';
-            errorDiv.style.display = 'block';
-            return;
-        }
-    }
-    else if (selectedRole === 'cashier') {
-        const cashierType = document.getElementById('cashierTypeInput').value;
-        // Demo cashier login
-        if (email === 'cashier@test.com' && password === 'cashier123') {
-            if (cashierType === 'entry_cashier') {
-                redirectUrl = 'http://localhost:5173/cashier/entry';
-                userRole = 'entry_cashier';
-            } else if (cashierType === 'exit_cashier') {
-                redirectUrl = 'http://localhost:5173/cashier/exit';
-                userRole = 'exit_cashier';
-            }
-        } else {
-            errorDiv.textContent = 'Invalid cashier credentials. Use: cashier@test.com / cashier123';
-            errorDiv.style.display = 'block';
-            return;
-        }
-    }
-
-    if (!redirectUrl) {
-        errorDiv.textContent = 'Invalid credentials. Please check and try again.';
-        errorDiv.style.display = 'block';
-        return;
-    }
-
-    // Store demo tokens
-    const params = new URLSearchParams({
-        access_token: 'demo_token_' + Date.now(),
-        refresh_token: 'demo_refresh_token',
-        user_role: userRole,
-        user_name: email.split('@')[0],
-        user_email: email,
-        site_id: '1'
-    });
-
-    console.log('Redirecting to:', `${redirectUrl}?${params.toString()}`);
-
-    // Show loading
-    const submitBtn = document.querySelector('#step-login .login-submit-btn');
-    const originalText = submitBtn.textContent;
-    submitBtn.textContent = 'Redirecting...';
-    submitBtn.disabled = true;
-
-    setTimeout(() => {
-        window.location.href = `${redirectUrl}?${params.toString()}`;
-    }, 500);
-}
-
-// new function code handle login abo
 async function handleLogin(e) {
     e.preventDefault();
     console.log('Login attempted');
@@ -615,6 +530,22 @@ window.closeRegModal = closeRegModal;
 window.handleRegOverlayClick = handleRegOverlayClick;
 window.submitQuery = submitQuery;
 window.submitOwnerRegistration = submitOwnerRegistration;
+window.closeSuccessModal = function(e, force = false) {
+    if (force || e.target.id === 'successModal') {
+        document.getElementById('successModal').classList.remove('active');
+        document.body.style.overflow = '';
+    }
+};
+
+function showSuccessModal(message) {
+    const modal = document.getElementById('successModal');
+    const msgEl = document.getElementById('successModalMsg');
+    if (modal && msgEl) {
+        msgEl.textContent = message;
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+}
 
 // ════════════════════════════════════════════
 // VALIDATION FUNCTIONS
@@ -693,37 +624,39 @@ window.submitQuery = async function (event) {
     btnSpan.textContent = 'Sending...'
     spinner.style.display = 'inline-block'
 
-    // Supabase Insert
-    const { error } = await supabase.from('contact_queries').insert([{
-        name,
-        email,
-        phone: phone || null,
-        query_type: queryType,
-        message,
-        status: 'pending'
-    }])
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/auth/registration-query/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                full_name: name,
+                email: email,
+                phone_number: phone,
+                query_type: queryType,
+                message: message
+            })
+        });
 
-    submitBtn.disabled = false
-    btnSpan.textContent = 'Send Message'
-    spinner.style.display = 'none'
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to submit query');
 
-    const successDiv = document.getElementById('contactSuccessMsg')
-    if (error) {
-        successDiv.innerHTML = 'Error: ' + error.message
-        successDiv.style.color = 'red'
-        successDiv.style.display = 'block'
-    } else {
-        successDiv.innerHTML = '✓ Thank you! We\'ll respond within 24 hours.'
-        successDiv.style.color = 'green'
-        successDiv.style.display = 'block'
-        document.getElementById('contactForm').reset()
-
-        // Agar Owner Registration select kiya to owner wala tab khol do
-        if (queryType === 'owner_registration') {
-            setTimeout(() => showSlide(1), 1500) // Slide 1 = Owner Registration
+        document.getElementById('contactForm').reset();
+        if (data.credentials) {
+            showCredentialsModal(data.credentials.email, data.credentials.temporary_password);
+        } else {
+            showSuccessModal('Thank you! We\'ll respond within 24 hours.');
+            // If Owner Registration selected, maybe switch to that slide
+            if (queryType === 'owner_registration') {
+                setTimeout(() => showSlide(1), 2000);
+            }
         }
 
-        setTimeout(() => { successDiv.style.display = 'none' }, 5000)
+    } catch (err) {
+        alert('Error: ' + err.message);
+    } finally {
+        submitBtn.disabled = false
+        btnSpan.textContent = 'Send Message'
+        spinner.style.display = 'none'
     }
 }
 
@@ -808,37 +741,132 @@ async function submitOwnerRegistration(event) {
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
     }
 
-    // Simulate API call
-    setTimeout(() => {
-        const regData = {
-            id: Date.now(),
-            name, email, phone, city, site_name: siteName, address,
-            total_slots: parseInt(totalSlots),
-            status: 'pending_approval',
-            submitted_at: new Date().toISOString()
-        };
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/auth/registration-query/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                full_name: name,
+                email: email,
+                phone_number: phone,
+                query_type: 'owner_registration',
+                proposed_site_name: siteName,
+                site_capacity: parseInt(totalSlots),
+                message: `City: ${city}\nAddress: ${address}`
+            })
+        });
 
-        let registrations = JSON.parse(localStorage.getItem('owner_registrations') || '[]');
-        registrations.push(regData);
-        localStorage.setItem('owner_registrations', JSON.stringify(registrations));
-
-        const successDiv = document.getElementById('regSuccessMsg');
-        if (successDiv) {
-            successDiv.innerHTML = '✓ Registration submitted! Admin will contact you within 48 hours.';
-            successDiv.style.display = 'block';
-        }
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Registration failed');
 
         document.getElementById('ownerRegForm').reset();
+        closeRegModal();
+        if (data.credentials) {
+            showCredentialsModal(data.credentials.email, data.credentials.temporary_password);
+        } else {
+            showSuccessModal('Registration submitted! Admin will review and contact you shortly.');
+            setTimeout(() => showSlide(2), 2000);
+        }
 
+    } catch (err) {
+        alert('Error: ' + err.message);
+    } finally {
         if (submitBtn) {
             submitBtn.disabled = false;
             submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Registration';
         }
-
-        // Switch to support slide
-        setTimeout(() => showSlide(2), 2000);
-        setTimeout(() => {
-            if (successDiv) successDiv.style.display = 'none';
-        }, 5000);
-    }, 1000);
+    }
 }
+
+// ════════════════════════════════════════════
+// CREDENTIALS MODAL & DIRECT LOGIN FUNCTIONS
+// ════════════════════════════════════════════
+let generatedEmail = "";
+let generatedPassword = "";
+
+function showCredentialsModal(email, password) {
+    generatedEmail = email;
+    generatedPassword = password;
+    
+    const emailEl = document.getElementById('credEmailText');
+    const passEl = document.getElementById('credPasswordText');
+    const modal = document.getElementById('credentialsModal');
+    
+    if (emailEl) emailEl.textContent = email;
+    if (passEl) passEl.textContent = password;
+    
+    if (modal) {
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+function closeCredentialsModal() {
+    const modal = document.getElementById('credentialsModal');
+    if (modal) {
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+}
+
+async function copyCredentials() {
+    const textToCopy = `Email: ${generatedEmail}\nPassword: ${generatedPassword}`;
+    try {
+        await navigator.clipboard.writeText(textToCopy);
+        const copyBtn = document.getElementById('copyCredsBtn');
+        const copySpan = copyBtn.querySelector('span');
+        if (copySpan) {
+            const originalText = copySpan.textContent;
+            copySpan.textContent = 'Copied!';
+            setTimeout(() => {
+                copySpan.textContent = originalText;
+            }, 2000);
+        }
+    } catch (err) {
+        alert('Failed to copy credentials: ' + err);
+    }
+}
+
+async function handleDirectLogin() {
+    closeCredentialsModal();
+    
+    // Auto populate and submit login
+    selectedRole = 'owner';
+    const emailInput = document.getElementById('emailInput');
+    const passwordInput = document.getElementById('passwordInput');
+    
+    if (emailInput) emailInput.value = generatedEmail;
+    if (passwordInput) passwordInput.value = generatedPassword;
+    
+    // Show login modal but skip role selection, go straight to login form
+    const modal = document.getElementById('loginModal');
+    if (modal) {
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        
+        // Setup owner role details in the login modal
+        const cfg = ROLES['owner'];
+        const badge = document.getElementById('roleBadge');
+        if (badge) {
+            badge.className = 'role-badge owner';
+            badge.innerHTML = `<i class="${cfg.icon}"></i> ${cfg.label}`;
+        }
+        const roleSubtitle = document.getElementById('roleSubtitle');
+        if (roleSubtitle) roleSubtitle.textContent = cfg.subtitle;
+        
+        document.getElementById('cashierTypeGroup').style.display = 'none';
+        showStep('login');
+    }
+    
+    // Auto-trigger login submission!
+    const submitBtn = document.getElementById('submitBtn');
+    if (submitBtn) {
+        // Trigger handleLogin event programmatically
+        const mockEvent = { preventDefault: () => {} };
+        await handleLogin(mockEvent);
+    }
+}
+
+window.closeCredentialsModal = closeCredentialsModal;
+window.copyCredentials = copyCredentials;
+window.handleDirectLogin = handleDirectLogin;

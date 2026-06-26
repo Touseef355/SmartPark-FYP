@@ -16,15 +16,24 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path , include
+from django.urls import path, include, re_path
 from django.conf import settings
 from django.conf.urls.static import static
+from django.views.static import serve
+import os
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+LANDING_PAGE_DIR = os.path.join(BASE_DIR.parent, 'landing-page')
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("api/auth/",include('accounts.urls')),
+    path("api/auth/", include('accounts.urls')),
     path('api/parking/', include('parking.urls')),
     path('api/bookings/', include('bookings.urls')),  
     path('api/payments/', include('payments.urls')),
     path('api/ai/', include('ai_module.urls')),
-] + static(settings.MEDIA_URL,document_root=settings.MEDIA_ROOT)
+    
+    # Serve landing page directly from Django backend
+    re_path(r'^landing/(?P<path>.*)$', serve, {'document_root': LANDING_PAGE_DIR}),
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -42,11 +42,28 @@ import SiteDetail from './pages/owner/SiteDetail'
 
 // ── Auth util ──────────────────────────────────────────────────
 import { getToken, getUser, logout } from './utils/auth'
+import { NotificationProvider } from './utils/NotificationContext'
+import ToastContainer from './components/ToastContainer'
 import Login from './pages/Login'
 
-const LANDING_URL = 'http://127.0.0.1:5500/index.html'
+const LANDING_URL = 'http://127.0.0.1:8000/landing/index.html'
 
 function RequireAuth({ allowedRoles, children }) {
+  // Capture auth tokens from landing page redirect URL if present
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlToken = urlParams.get('access_token');
+  if (urlToken) {
+    localStorage.setItem('access_token', urlToken);
+    localStorage.setItem('refresh_token', urlParams.get('refresh_token') || '');
+    localStorage.setItem('user_role', urlParams.get('user_role') || '');
+    localStorage.setItem('user_name', urlParams.get('user_name') || '');
+    localStorage.setItem('user_email', urlParams.get('user_email') || '');
+    localStorage.setItem('site_id', urlParams.get('site_id') || '');
+    localStorage.setItem('user_id', urlParams.get('user_id') || '');
+    // Clean URL
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+
   const token = getToken()
   const { role } = getUser()
 
@@ -103,22 +120,25 @@ export default function App() {
           path="/admin/dashboard/*"
           element={
             <RequireAuth allowedRoles={['admin']}>
-              <AdminLayout>
-                <Routes>
-                  <Route index element={<AdminDashboard />} />
-                  <Route path="owner-accounts" element={<OwnerAccounts />} />
-                  <Route path="parking-sites" element={<ParkingSites />} />
-                  <Route path="payments" element={<AdminPayments />} />
-                  <Route path="queries" element={<Queries />} />
-                  <Route path="reports" element={<AdminReports />} />
-                  <Route path="settings" element={<AdminSettings />} />
-                  <Route path="system-logs" element={<SystemLogs />} />
-                  <Route path="user-accounts" element={<UserAccounts />} />
-                  <Route path="ai-monitor" element={<AIModelMonitor />} />
-                  <Route path="refunds" element={<Refunds />} />
-                  <Route path="peak-hours" element={<PeakHourDashboard />} />
-                </Routes>
-              </AdminLayout>
+              <NotificationProvider>
+                <AdminLayout>
+                  <Routes>
+                    <Route index element={<AdminDashboard />} />
+                    <Route path="owner-accounts" element={<OwnerAccounts />} />
+                    <Route path="parking-sites" element={<ParkingSites />} />
+                    <Route path="payments" element={<AdminPayments />} />
+                    <Route path="queries" element={<Queries />} />
+                    <Route path="reports" element={<AdminReports />} />
+                    <Route path="settings" element={<AdminSettings />} />
+                    <Route path="system-logs" element={<SystemLogs />} />
+                    <Route path="user-accounts" element={<UserAccounts />} />
+                    <Route path="ai-monitor" element={<AIModelMonitor />} />
+                    <Route path="refunds" element={<Refunds />} />
+                    <Route path="peak-hours" element={<PeakHourDashboard />} />
+                  </Routes>
+                </AdminLayout>
+                <ToastContainer />
+              </NotificationProvider>
             </RequireAuth>
           }
         />
