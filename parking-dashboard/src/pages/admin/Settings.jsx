@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Settings, Clock, AlertTriangle, CreditCard, Save, RotateCcw, Shield, Eye } from 'lucide-react'
+import { supabase } from '../../supabase'
 
 // ── Section Card ──────────────────────────────────
 function SectionCard({ title, description, icon: Icon, children }) {
@@ -101,39 +102,41 @@ export default function AdminSettings() {
   const fetchSettings = async () => {
     setLoading(true)
     try {
-      const token = localStorage.getItem('access_token')
-      const res = await fetch('http://127.0.0.1:8000/api/parking/admin/settings/', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-      if (!res.ok) {
-        throw new Error(`Failed to fetch settings: ${res.statusText}`)
+      const { data, error } = await supabase
+        .from('system_settings')
+        .select('*')
+        .eq('id', 1)
+        .maybeSingle()
+
+      if (error) {
+        throw error
       }
-      const data = await res.json()
-      setSettings({
-        grace_period_minutes:     data.parking?.grace_period_minutes ?? 10,
-        overstay_rate_per_hour:   Number(data.parking?.overstay_rate_per_hour) ?? 20,
-        reservation_lock_minutes: data.parking?.reservation_lock_minutes ?? 10,
-        max_booking_days:         data.parking?.max_booking_days ?? 7,
-        cash_enabled:             data.payments?.cash_enabled ?? true,
-        easypaisa_enabled:        data.payments?.easypaisa_enabled ?? true,
-        card_enabled:             data.payments?.card_enabled ?? true,
-        refund_100_before_start:  data.payments?.refund_100_before_start ?? true,
-        refund_percent:           data.payments?.refund_percent ?? 50,
-        refund_window_minutes:    data.payments?.refund_window_minutes ?? 30,
-        notify_new_owner:         data.notifications?.notify_new_owner ?? true,
-        notify_overstay:          data.notifications?.notify_overstay ?? true,
-        notify_payment_received:  data.notifications?.notify_payment_received ?? true,
-        notify_manual_override:   data.notifications?.notify_manual_override ?? false,
-        require_phone_otp:        data.security?.require_phone_otp ?? true,
-        session_timeout_minutes:  data.security?.session_timeout_minutes ?? 60,
-        max_login_attempts:       data.security?.max_login_attempts ?? 5,
-        show_confidence_score:    data.display?.show_confidence_score ?? true,
-        show_owner_revenue:       data.display?.show_owner_revenue ?? true,
-      })
+
+      if (data) {
+        setSettings({
+          grace_period_minutes:     data.grace_period_minutes ?? 10,
+          overstay_rate_per_hour:   Number(data.overstay_rate_per_hour) ?? 20,
+          reservation_lock_minutes: data.reservation_lock_minutes ?? 10,
+          max_booking_days:         data.max_booking_days ?? 7,
+          cash_enabled:             data.cash_enabled ?? true,
+          easypaisa_enabled:        data.easypaisa_enabled ?? true,
+          card_enabled:             data.card_enabled ?? true,
+          refund_100_before_start:  data.refund_100_before_start ?? true,
+          refund_percent:           data.refund_percent ?? 50,
+          refund_window_minutes:    data.refund_window_minutes ?? 30,
+          notify_new_owner:         data.notify_new_owner ?? true,
+          notify_overstay:          data.notify_overstay ?? true,
+          notify_payment_received:  data.notify_payment_received ?? true,
+          notify_manual_override:   data.notify_manual_override ?? false,
+          require_phone_otp:        data.require_phone_otp ?? true,
+          session_timeout_minutes:  data.session_timeout_minutes ?? 60,
+          max_login_attempts:       data.max_login_attempts ?? 5,
+          show_confidence_score:    data.show_confidence_score ?? true,
+          show_owner_revenue:       data.show_owner_revenue ?? true,
+        })
+      }
     } catch (err) {
-      console.error('Error fetching settings:', err)
+      console.error('Error fetching settings from Supabase:', err)
     } finally {
       setLoading(false)
     }
@@ -148,17 +151,32 @@ export default function AdminSettings() {
 
   const handleSave = async () => {
     try {
-      const token = localStorage.getItem('access_token')
-      const res = await fetch('http://127.0.0.1:8000/api/parking/admin/settings/', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(settings)
-      })
-      if (!res.ok) {
-        throw new Error('Failed to save settings')
+      const { error } = await supabase
+        .from('system_settings')
+        .upsert({
+          id: 1,
+          grace_period_minutes:     settings.grace_period_minutes,
+          overstay_rate_per_hour:   settings.overstay_rate_per_hour,
+          reservation_lock_minutes: settings.reservation_lock_minutes,
+          max_booking_days:         settings.max_booking_days,
+          cash_enabled:             settings.cash_enabled,
+          easypaisa_enabled:        settings.easypaisa_enabled,
+          card_enabled:             settings.card_enabled,
+          refund_100_before_start:  settings.refund_100_before_start,
+          refund_percent:           settings.refund_percent,
+          refund_window_minutes:    settings.refund_window_minutes,
+          notify_new_owner:         settings.notify_new_owner,
+          notify_overstay:          settings.notify_overstay,
+          notify_payment_received:  settings.notify_payment_received,
+          notify_manual_override:   settings.notify_manual_override,
+          require_phone_otp:        settings.require_phone_otp,
+          session_timeout_minutes:  settings.session_timeout_minutes,
+          max_login_attempts:       settings.max_login_attempts,
+          show_confidence_score:    settings.show_confidence_score,
+          show_owner_revenue:       settings.show_owner_revenue,
+        })
+      if (error) {
+        throw error
       }
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
@@ -191,17 +209,14 @@ export default function AdminSettings() {
       show_owner_revenue: true
     }
     try {
-      const token = localStorage.getItem('access_token')
-      const res = await fetch('http://127.0.0.1:8000/api/parking/admin/settings/', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(defaults)
-      })
-      if (!res.ok) {
-        throw new Error('Failed to reset settings')
+      const { error } = await supabase
+        .from('system_settings')
+        .upsert({
+          id: 1,
+          ...defaults
+        })
+      if (error) {
+        throw error
       }
       setSettings(defaults)
       setSaved(true)

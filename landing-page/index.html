@@ -10,7 +10,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 
-    <!-- Supabase script removed, migrated to Django backend -->
+    <!-- Supabase script -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
 <body>
@@ -540,7 +541,7 @@
             </div>
             <h2 style="color: #fff; margin-bottom: 10px;">Success!</h2>
             <p id="successModalMsg" style="color: #ccc; margin-bottom: 25px;"></p>
-            <button class="btn-primary" onclick="closeSuccessModal(null, true)">Okay</button>
+            <button class="btn-primary" onclick="closeSuccessModal(event, true)">Okay</button>
         </div>
     </div>
     <!-- ═══════════ End Success Modal ═══════════ -->

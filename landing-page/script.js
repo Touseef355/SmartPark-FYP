@@ -1,7 +1,9 @@
-// ════════════════════════════════════════════
-// CONFIG
-// ════════════════════════════════════════════
 const API_BASE_URL = 'http://127.0.0.1:8000';
+
+// Supabase config
+const SUPABASE_URL = 'https://yvnjawshurzivvkkzzzd.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_3DGA6YVAaZwCCe82gDTZBA_UROwbiGF';
+const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
 // ════════════════════════════════════════════
 // WAIT FOR DOM TO LOAD
@@ -531,8 +533,14 @@ window.handleRegOverlayClick = handleRegOverlayClick;
 window.submitQuery = submitQuery;
 window.submitOwnerRegistration = submitOwnerRegistration;
 window.closeSuccessModal = function(e, force = false) {
-    if (force || e.target.id === 'successModal') {
-        document.getElementById('successModal').classList.remove('active');
+    if (e && e.stopPropagation) {
+        e.stopPropagation();
+    }
+    if (force || (e && e.target && e.target.id === 'successModal')) {
+        const modal = document.getElementById('successModal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
         document.body.style.overflow = '';
     }
 };
@@ -625,30 +633,30 @@ window.submitQuery = async function (event) {
     spinner.style.display = 'inline-block'
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/auth/registration-query/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                full_name: name,
-                email: email,
-                phone_number: phone,
-                query_type: queryType,
-                message: message
-            })
-        });
+        if (!supabaseClient) {
+            throw new Error('Supabase client is not initialized.');
+        }
 
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Failed to submit query');
+        const { data, error } = await supabaseClient
+            .from('contact_queries')
+            .insert([
+                {
+                    name: name,
+                    email: email,
+                    phone: phone,
+                    query_type: queryType,
+                    message: message,
+                    status: 'pending'
+                }
+            ]);
+
+        if (error) throw error;
 
         document.getElementById('contactForm').reset();
-        if (data.credentials) {
-            showCredentialsModal(data.credentials.email, data.credentials.temporary_password);
-        } else {
-            showSuccessModal('Thank you! We\'ll respond within 24 hours.');
-            // If Owner Registration selected, maybe switch to that slide
-            if (queryType === 'owner_registration') {
-                setTimeout(() => showSlide(1), 2000);
-            }
+        showSuccessModal('Thank you! We\'ll respond within 24 hours.');
+        // If Owner Registration selected, maybe switch to that slide
+        if (queryType === 'owner_registration') {
+            setTimeout(() => showSlide(1), 2000);
         }
 
     } catch (err) {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { BarChart2, Download, FileText, TrendingUp, Car, CreditCard, Calendar, RefreshCw } from 'lucide-react'
 import { supabase } from '../../supabase'
+import * as XLSX from 'xlsx'
 
 function fmtDate(str) {
   if (!str) return '—'
@@ -96,6 +97,48 @@ export default function Reports() {
     a.click()
   }
 
+  // Excel Export using SheetJS
+  const exportExcel = () => {
+    const wb = XLSX.utils.book_new()
+    
+    // Sheet 1: Revenue by Site
+    const siteData = bySite.map(s => ({
+      'Site Name': s.name,
+      'Total Bookings': s.bookings,
+      'Revenue (Rs.)': s.revenue
+    }))
+    const wsSite = XLSX.utils.json_to_sheet(siteData)
+    XLSX.utils.book_append_sheet(wb, wsSite, 'Revenue by Site')
+    
+    // Sheet 2: Payments Detail
+    const paymentsData = payments.map(p => ({
+      'Payment ID': p.id,
+      'Site': p.parking_sites?.name || '—',
+      'Amount (Rs.)': p.amount,
+      'Status': p.status,
+      'Date': fmtDate(p.created_at)
+    }))
+    const wsPay = XLSX.utils.json_to_sheet(paymentsData)
+    XLSX.utils.book_append_sheet(wb, wsPay, 'Payments Detail')
+
+    // Sheet 3: Bookings Detail
+    const bookingsData = bookings.map(b => ({
+      'Booking ID': b.id,
+      'Site ID': b.site_id,
+      'Status': b.status,
+      'Date': fmtDate(b.created_at)
+    }))
+    const wsBook = XLSX.utils.json_to_sheet(bookingsData)
+    XLSX.utils.book_append_sheet(wb, wsBook, 'Bookings Detail')
+    
+    XLSX.writeFile(wb, `system_reports_excel_${dateRange}_${Date.now()}.xlsx`)
+  }
+
+  // PDF Export using Browser Print
+  const exportPDF = () => {
+    window.print()
+  }
+
   const STATUS_COLORS = {
     active:    'bg-blue-100 text-blue-700',
     completed: 'bg-green-100 text-green-700',
@@ -128,8 +171,14 @@ export default function Reports() {
           <button onClick={() => fetchReport(dateRange)} className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50 transition-colors">
             <RefreshCw className="w-4 h-4" />
           </button>
-          <button onClick={exportCSV} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+          <button onClick={exportCSV} className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50 transition-colors">
             <Download className="w-4 h-4" /> Export CSV
+          </button>
+          <button onClick={exportExcel} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors">
+            <Download className="w-4 h-4" /> Export Excel
+          </button>
+          <button onClick={exportPDF} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+            <FileText className="w-4 h-4" /> Export PDF
           </button>
         </div>
       </div>
