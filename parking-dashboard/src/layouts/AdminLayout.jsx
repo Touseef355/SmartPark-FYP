@@ -40,9 +40,9 @@ export default function AdminLayout({ children }) {
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-border">
           {sidebarOpen ? (
-            <span className="text-primary font-bold text-xl">SmartPark</span>
+            <span className="text-primary font-bold text-xl">Parkroo</span>
           ) : (
-            <span className="text-primary font-bold text-xl">SP</span>
+            <span className="text-primary font-bold text-xl">PR</span>
           )}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}

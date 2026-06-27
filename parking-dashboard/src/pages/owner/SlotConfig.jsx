@@ -1,71 +1,61 @@
 import React, { useState, useEffect } from 'react'
-import { supabase } from '../../supabase'
+import api from '../../api/axios'
 import { Grid3x3, Plus, Edit2, Trash2, Save, X, Car, Bike } from 'lucide-react'
 import { getUser } from '../../utils/auth'
 
 const SlotConfig = () => {
-  const [selectedFloor, setSelectedFloor] = useState(1)
   const [isAddingSlot, setIsAddingSlot] = useState(false)
   const [editingSlot, setEditingSlot] = useState(null)
   const [slots, setSlots] = useState([])
   const [siteId, setSiteId] = useState(null)
-  const [siteData, setSiteData] = useState(null)
   const [sites, setSites] = useState([])
 
   const [newSlot, setNewSlot] = useState({
     slotNumber: '',
-    floor: 1,
-    type: 'Car',
+    type: 'normal',
     rate: 100
   })
 
   useEffect(() => {
-    fetchSiteAndSlots()
-    const channel = supabase
-    .channel('slots_changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'parking_slots' },
-        () => fetchSlots()
-      )
-    .subscribe()
-    return () => supabase.removeChannel(channel)
+    fetchSites()
   }, [])
 
-  const fetchSiteAndSlots = async () => {
-    const { user_id } = getUser()
-    if (!user_id) return
-    const { data: ownerSites } = await supabase
-      .from('parking_sites')
-      .select('*')
-      .eq('owner_id', user_id)
-      .order('name')
-    setSites(ownerSites || [])
-    if (ownerSites?.length) {
-      setSiteId(ownerSites[0].id)
-      setSiteData(ownerSites[0])
-      setNewSlot(s => ({...s, rate: ownerSites[0].price_per_hour || 100 }))
-      await fetchSlots(ownerSites[0].id, ownerSites[0])
+  const fetchSites = async () => {
+    try {
+      const res = await api.get('/parking/sites/')
+      setSites(res.data || [])
+      if (res.data?.length) {
+        setSiteId(res.data[0].id)
+        await fetchSlots(res.data[0].id)
+      }
+    } catch (err) {
+      console.error(err)
     }
   }
 
-  const fetchSlots = async (currentSiteId = siteId, currentSiteData = siteData) => {
+  const fetchSlots = async (currentSiteId = siteId) => {
     if (!currentSiteId) return
-    const { data } = await supabase.from('parking_slots').select('*').eq('site_id', currentSiteId)
+    try {
+      const res = await api.get(`/parking/sites/${currentSiteId}/slots/`)
+      const mapped = (res.data || []).map(s => {
+        let status = 'Available'
+        if (s.is_occupied) status = 'Occupied'
+        else if (s.is_reserved) status = 'Reserved'
 
-    const mapped = (data || []).map(s => ({
-      id: s.id,
-      slotNumber: s.slot_number,
-      floor: s.floor,
-      type: s.type || 'Car',
-      status: s.status || 'Available',
-      rate: currentSiteData?.price_per_hour || 100
-    }))
-
-    mapped.sort((a, b) => a.slotNumber.localeCompare(b.slotNumber, undefined, { numeric: true, sensitivity: 'base' }))
-    setSlots(mapped)
+        return {
+          id: s.id,
+          slotNumber: s.slot_number,
+          type: s.slot_type || 'normal',
+          status: status,
+          rate: parseFloat(s.price_per_hour) || 50
+        }
+      })
+      mapped.sort((a, b) => a.slotNumber.localeCompare(b.slotNumber, undefined, { numeric: true, sensitivity: 'base' }))
+      setSlots(mapped)
+    } catch (err) {
+      console.error(err)
+    }
   }
-
-  const floors = siteData?.total_floors? Array.from({ length: siteData.total_floors }, (_, i) => i + 1) : [1, 2]
-  const filteredSlots = slots.filter(slot => slot.floor === selectedFloor)
 
   const getStatusColor = (status) => {
     switch(status) {
@@ -76,44 +66,54 @@ const SlotConfig = () => {
     }
   }
 
-  const getTypeIcon = (type) => type === 'Car'? <Car className="w-4 h-4" /> : <Bike className="w-4 h-4" />
+  const getTypeIcon = (type) => type.toLowerCase() === 'vip' ? <Car className="w-4 h-4 text-purple-600" /> : <Car className="w-4 h-4 text-gray-600" />
 
   const handleAddSlot = async () => {
     if (!newSlot.slotNumber) return alert('Please enter slot number')
-
-    const { error } = await supabase.from('parking_slots').insert([{
-      site_id: siteId,
-      slot_number: newSlot.slotNumber.trim().toUpperCase(),
-      floor: newSlot.floor,
-      type: newSlot.type,
-      status: 'Available'
-      // rate_per_hour hata diya - column exist nahi karta
-    }])
-
-    if (error) return alert('Error: ' + error.message)
-
-    setNewSlot({ slotNumber: '', floor: selectedFloor, type: 'Car', rate: siteData?.price_per_hour || 100 })
-    setIsAddingSlot(false)
-    await fetchSlots()
+    try {
+      await api.post('/parking/slots/', {
+        parking_site: siteId,
+        slot_number: newSlot.slotNumber.trim().toUpperCase(),
+        slot_type: newSlot.type,
+        is_occupied: false,
+        is_reserved: false,
+        price_per_hour: parseFloat(newSlot.rate) || 50
+      })
+      setNewSlot({ slotNumber: '', type: 'normal', rate: 100 })
+      setIsAddingSlot(false)
+      await fetchSlots()
+    } catch (err) {
+      alert('Error: ' + (err.response?.data?.detail || err.message))
+    }
   }
 
   const handleDeleteSlot = async (id) => {
     if (confirm('Delete this slot?')) {
-      await supabase.from('parking_slots').delete().eq('id', id)
-      await fetchSlots()
+      try {
+        await api.delete(`/parking/slots/${id}/`)
+        await fetchSlots()
+      } catch (err) {
+        alert('Error: ' + err.message)
+      }
     }
   }
 
   const handleEditSlot = (slot) => setEditingSlot(slot)
 
   const handleSaveEdit = async () => {
-    await supabase.from('parking_slots').update({
-      slot_number: editingSlot.slotNumber.trim().toUpperCase(),
-      status: editingSlot.status
-    }).eq('id', editingSlot.id)
-
-    setEditingSlot(null)
-    await fetchSlots()
+    try {
+      await api.patch(`/parking/slots/${editingSlot.id}/`, {
+        slot_number: editingSlot.slotNumber.trim().toUpperCase(),
+        slot_type: editingSlot.type,
+        is_occupied: editingSlot.status === 'Occupied',
+        is_reserved: editingSlot.status === 'Reserved',
+        price_per_hour: parseFloat(editingSlot.rate) || 50
+      })
+      setEditingSlot(null)
+      await fetchSlots()
+    } catch (err) {
+      alert('Error: ' + err.message)
+    }
   }
 
   return (
@@ -121,7 +121,7 @@ const SlotConfig = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Slot Configuration</h1>
-          <p className="text-gray-600 mt-1">Manage parking slots for each floor</p>
+          <p className="text-gray-600 mt-1">Manage parking slots for your site</p>
         </div>
         <button onClick={() => setIsAddingSlot(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
           <Plus className="w-4 h-4" /> Add New Slot
@@ -135,12 +135,8 @@ const SlotConfig = () => {
             value={siteId || ''}
             onChange={async (e) => {
               const selectedId = e.target.value
-              const siteObj = sites.find(s => String(s.id) === String(selectedId))
               setSiteId(selectedId)
-              setSiteData(siteObj)
-              setSelectedFloor(1)
-              setNewSlot(s => ({...s, rate: siteObj?.price_per_hour || 100 }))
-              await fetchSlots(selectedId, siteObj)
+              await fetchSlots(selectedId)
             }}
             className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
@@ -151,34 +147,20 @@ const SlotConfig = () => {
         </div>
       )}
 
-      <div className="bg-white rounded-xl p-4 border border-gray-200">
-        <div className="flex items-center gap-4">
-          <span className="text-sm font-medium text-gray-700">Select Floor:</span>
-          <div className="flex gap-2">
-            {floors.map(floor => (
-              <button key={floor} onClick={() => setSelectedFloor(floor)} className={`px-4 py-2 rounded-lg font-medium transition-colors ${selectedFloor === floor? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
-                Floor {floor}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl p-4 border border-gray-200"><p className="text-sm text-gray-500">Total Slots</p><p className="text-2xl font-bold text-gray-900 mt-1">{filteredSlots.length}</p></div>
-        <div className="bg-white rounded-xl p-4 border border-gray-200"><p className="text-sm text-gray-500">Available</p><p className="text-2xl font-bold text-green-600 mt-1">{filteredSlots.filter(s => s.status === 'Available').length}</p></div>
-        <div className="bg-white rounded-xl p-4 border border-gray-200"><p className="text-sm text-gray-500">Occupied</p><p className="text-2xl font-bold text-orange-600 mt-1">{filteredSlots.filter(s => s.status === 'Occupied').length}</p></div>
-        <div className="bg-white rounded-xl p-4 border border-gray-200"><p className="text-sm text-gray-500">Reserved</p><p className="text-2xl font-bold text-blue-600 mt-1">{filteredSlots.filter(s => s.status === 'Reserved').length}</p></div>
+        <div className="bg-white rounded-xl p-4 border border-gray-200"><p className="text-sm text-gray-500">Total Slots</p><p className="text-2xl font-bold text-gray-900 mt-1">{slots.length}</p></div>
+        <div className="bg-white rounded-xl p-4 border border-gray-200"><p className="text-sm text-gray-500">Available</p><p className="text-2xl font-bold text-green-600 mt-1">{slots.filter(s => s.status === 'Available').length}</p></div>
+        <div className="bg-white rounded-xl p-4 border border-gray-200"><p className="text-sm text-gray-500">Occupied</p><p className="text-2xl font-bold text-orange-600 mt-1">{slots.filter(s => s.status === 'Occupied').length}</p></div>
+        <div className="bg-white rounded-xl p-4 border border-gray-200"><p className="text-sm text-gray-500">Reserved</p><p className="text-2xl font-bold text-blue-600 mt-1">{slots.filter(s => s.status === 'Reserved').length}</p></div>
       </div>
 
       {isAddingSlot && (
         <div className="bg-white rounded-xl p-6 border border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Add New Slot</h3>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div><label className="text-sm text-gray-500 font-medium">Slot Number</label><input type="text" placeholder="e.g. A5" value={newSlot.slotNumber} onChange={(e) => setNewSlot({...newSlot, slotNumber: e.target.value})} className="w-full mt-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>
-            <div><label className="text-sm text-gray-500 font-medium">Floor</label><select value={newSlot.floor} onChange={(e) => setNewSlot({...newSlot, floor: parseInt(e.target.value)})} className="w-full mt-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">{floors.map(f => <option key={f} value={f}>Floor {f}</option>)}</select></div>
-            <div><label className="text-sm text-gray-500 font-medium">Type</label><select value={newSlot.type} onChange={(e) => setNewSlot({...newSlot, type: e.target.value})} className="w-full mt-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"><option value="Car">Car</option><option value="Bike">Bike</option></select></div>
-            <div><label className="text-sm text-gray-500 font-medium">Rate/Hour</label><input type="number" value={newSlot.rate} onChange={(e) => setNewSlot({...newSlot, rate: parseInt(e.target.value)})} className="w-full mt-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>
+            <div><label className="text-sm text-gray-500 font-medium">Type</label><select value={newSlot.type} onChange={(e) => setNewSlot({...newSlot, type: e.target.value})} className="w-full mt-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"><option value="normal">Normal</option><option value="vip">VIP</option><option value="disabled">Disabled</option></select></div>
+            <div><label className="text-sm text-gray-500 font-medium">Rate/Hour (Rs.)</label><input type="number" value={newSlot.rate} onChange={(e) => setNewSlot({...newSlot, rate: parseInt(e.target.value)})} className="w-full mt-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>
           </div>
           <div className="flex gap-2 mt-4">
             <button onClick={handleAddSlot} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"><Save className="w-4 h-4" /> Add Slot</button>
@@ -188,20 +170,22 @@ const SlotConfig = () => {
       )}
 
       <div className="bg-white rounded-xl p-6 border border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Floor {selectedFloor} Slots</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">All Parking Slots</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          {filteredSlots.map(slot => (
+          {slots.map(slot => (
             <div key={slot.id} className={`p-4 rounded-lg border-2 ${getStatusColor(slot.status)} hover:shadow-md transition-shadow`}>
               {editingSlot?.id === slot.id? (
                 <div className="space-y-2">
                   <input type="text" value={editingSlot.slotNumber} onChange={(e) => setEditingSlot({...editingSlot, slotNumber: e.target.value})} className="w-full px-2 py-1 text-sm border rounded" />
+                  <select value={editingSlot.type} onChange={(e) => setEditingSlot({...editingSlot, type: e.target.value})} className="w-full px-2 py-1 text-sm border rounded"><option value="normal">Normal</option><option value="vip">VIP</option><option value="disabled">Disabled</option></select>
                   <select value={editingSlot.status} onChange={(e) => setEditingSlot({...editingSlot, status: e.target.value})} className="w-full px-2 py-1 text-sm border rounded"><option>Available</option><option>Occupied</option><option>Reserved</option></select>
+                  <input type="number" value={editingSlot.rate} onChange={(e) => setEditingSlot({...editingSlot, rate: parseInt(e.target.value)})} className="w-full px-2 py-1 text-sm border rounded" />
                   <div className="flex gap-1"><button onClick={handleSaveEdit} className="flex-1 px-2 py-1 bg-green-600 text-white text-xs rounded">Save</button><button onClick={() => setEditingSlot(null)} className="flex-1 px-2 py-1 bg-gray-500 text-white text-xs rounded">Cancel</button></div>
                 </div>
               ) : (
                 <>
                   <div className="flex items-center justify-between mb-2"><span className="font-bold text-lg">{slot.slotNumber}</span>{getTypeIcon(slot.type)}</div>
-                  <p className="text-xs font-medium">{slot.type}</p>
+                  <p className="text-xs font-medium capitalize">{slot.type}</p>
                   <p className="text-xs mt-1">Rs. {slot.rate}/hr</p>
                   <p className="text-xs mt-2 font-medium">{slot.status}</p>
                   <div className="flex gap-1 mt-3">

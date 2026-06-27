@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { supabase } from '../../supabase'
+import api from '../../api/axios'
 import { User, Lock, Bell, Globe, Shield, Save, Eye, EyeOff, Check } from 'lucide-react'
 import { getUser } from '../../utils/auth'
 
@@ -10,11 +10,11 @@ const Settings = () => {
   const [saveSuccess, setSaveSuccess] = useState(false)
 
   const [profileData, setProfileData] = useState({
-    name: 'Admin Touseef',
-    email: 'admin@smartpark.com',
-    phone: '+92 300 1234567',
+    name: '',
+    email: '',
+    phone: '',
     role: 'Parking Owner',
-    siteName: 'SmartPark Downtown'
+    siteName: ''
   })
 
   const [passwordData, setPasswordData] = useState({
@@ -42,43 +42,39 @@ const Settings = () => {
 
   useEffect(() => {
     const load = async () => {
-      const u = getUser()
-      if (!u.user_id) return
-      const { data: userDb } = await supabase.from('users').select('*').eq('id', u.user_id).maybeSingle()
-      const { data: site } = await supabase.from('parking_sites').select('*').eq('owner_id', u.user_id).limit(1).maybeSingle()
-
-      setProfileData({
-        name: userDb?.full_name || u.name || '',
-        email: userDb?.email || localStorage.getItem('user_email') || 'owner@smartpark.com',
-        phone: userDb?.phone_number || '',
-        role: 'Parking Owner',
-        siteName: site?.name || ''
-      })
+      try {
+        const resSites = await api.get('/parking/sites/')
+        const site = resSites.data?.[0]
+        setProfileData({
+          name: localStorage.getItem('user_name') || '',
+          email: localStorage.getItem('user_email') || '',
+          phone: '',
+          role: 'Parking Owner',
+          siteName: site?.name || ''
+        })
+      } catch (err) {
+        console.error(err)
+      }
     }
     load()
   }, [])
 
   const handleSaveProfile = async () => {
-    const u = getUser()
-    if (!u.user_id) return
-    const { error } = await supabase.from('users').update({
-      full_name: profileData.name,
-      phone_number: profileData.phone
-    }).eq('id', u.user_id)
-
-    if (error) {
-      alert('Error: ' + error.message)
-      return
+    try {
+      const resSites = await api.get('/parking/sites/')
+      const site = resSites.data?.[0]
+      if (site) {
+        await api.put(`/parking/sites/${site.id}/`, {
+          name: profileData.siteName,
+          location: site.location,
+          capacity: site.capacity,
+        })
+      }
+      setSaveSuccess(true)
+      setTimeout(() => setSaveSuccess(false), 3000)
+    } catch (err) {
+      alert('Error updating site: ' + err.message)
     }
-
-    localStorage.setItem('user_name', profileData.name)
-
-    const { data: site } = await supabase.from('parking_sites').select('id').eq('owner_id', u.user_id).limit(1).maybeSingle()
-    if (site) {
-      await supabase.from('parking_sites').update({ name: profileData.siteName }).eq('id', site.id)
-    }
-    setSaveSuccess(true)
-    setTimeout(() => setSaveSuccess(false), 3000)
   }
 
   const handleChangePassword = async () => {
@@ -95,29 +91,16 @@ const Settings = () => {
       return
     }
     try {
-      const token = localStorage.getItem('access_token')
-      const res = await fetch('http://127.0.0.1:8000/api/auth/change-password/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          current_password: passwordData.currentPassword,
-          new_password: passwordData.newPassword,
-          confirm_password: passwordData.confirmPassword
-        })
+      await api.post('/auth/change-password/', {
+        current_password: passwordData.currentPassword,
+        new_password: passwordData.newPassword,
+        confirm_password: passwordData.confirmPassword
       })
-      const data = await res.json()
-      if (!res.ok) {
-        alert(data.error || 'Failed to change password')
-      } else {
-        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })
-        setSaveSuccess(true)
-        setTimeout(() => setSaveSuccess(false), 3000)
-      }
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })
+      setSaveSuccess(true)
+      setTimeout(() => setSaveSuccess(false), 3000)
     } catch (err) {
-      alert('Network error: ' + err.message)
+      alert('Error: ' + (err.response?.data?.error || err.message))
     }
   }
 

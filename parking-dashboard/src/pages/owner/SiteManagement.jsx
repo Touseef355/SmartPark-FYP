@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../../supabase'
+import api from '../../api/axios'
 import { Pencil, Trash2, Plus, X, Building2, MapPin, Phone, Mail, DollarSign, Eye } from 'lucide-react'
 import { getUser } from '../../utils/auth'
 
@@ -26,38 +26,28 @@ export default function SiteManagement() {
 
   useEffect(() => {
     fetchSites()
-
-    // Real-time subscription - Database me change hotay hi UI update
-    const channel = supabase
-     .channel('sites_changes')
-     .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'parking_sites' },
-        () => {
-          fetchSites()
-        }
-      )
-     .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
   }, [])
 
   const fetchSites = async () => {
     try {
       setLoading(true)
-      const { user_id } = getUser()
-      const query = supabase.from('parking_sites').select('*')
-      if (user_id) {
-        query.eq('owner_id', user_id)
-      }
-      const { data, error } = await query.order('created_at', { ascending: false })
-
-      if (error) throw error
-      setSites(data || [])
+      const res = await api.get('/parking/sites/')
+      // Map API response to UI fields (location -> address, capacity -> total_slots)
+      const mapped = (res.data || []).map(s => ({
+        id: s.id,
+        name: s.name,
+        address: s.location || '',
+        total_slots: s.capacity || 0,
+        price_per_hour: s.price_per_hour || 50,
+        total_floors: s.total_floors || 1,
+        opening_time: s.opening_time || '00:00',
+        closing_time: s.closing_time || '23:59',
+        status: s.status || 'active'
+      }))
+      setSites(mapped)
     } catch (error) {
       console.error('Error fetching sites:', error)
-      alert('Error: ' + error.message)
+      alert('Error fetching sites: ' + (error.response?.data?.detail || error.message))
     } finally {
       setLoading(false)
     }
@@ -103,58 +93,35 @@ export default function SiteManagement() {
     if (!confirm('Are you sure you want to delete this site?')) return
 
     try {
-      const { error } = await supabase
-  .from('parking_sites')
-  .delete()
-  .eq('id', id)
-
-      if (error) throw error
+      await api.delete(`/parking/sites/${id}/`)
       alert('Site deleted successfully!')
+      fetchSites()
     } catch (error) {
-      alert('Error: ' + error.message)
+      alert('Error deleting site: ' + (error.response?.data?.detail || error.message))
     }
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
-      const { user_id } = getUser()
-      const siteData = {
+      const sitePayload = {
         name: formData.name,
-        address: formData.address,
-        total_slots: parseInt(formData.total_slots),
-        price_per_hour: parseFloat(formData.price_per_hour),
-        total_floors: parseInt(formData.total_floors),
-        opening_time: formData.opening_time,
-        closing_time: formData.closing_time,
-        contact_number: formData.contact_number,
-        email: formData.email,
-        status: formData.status
+        location: formData.address,
+        capacity: parseInt(formData.total_slots),
       }
 
       if (isEditing) {
-        const { error } = await supabase
-          .from('parking_sites')
-          .update(siteData)
-          .eq('id', selectedSite.id)
-
-        if (error) throw error
+        await api.put(`/parking/sites/${selectedSite.id}/`, sitePayload)
         alert('Site updated successfully!')
       } else {
-        if (user_id) {
-          siteData.owner_id = user_id
-        }
-        const { error } = await supabase
-          .from('parking_sites')
-          .insert([siteData])
-
-        if (error) throw error
+        await api.post('/parking/sites/', sitePayload)
         alert('New site added successfully!')
       }
 
       setShowModal(false)
+      fetchSites()
     } catch (error) {
-      alert('Error: ' + error.message)
+      alert('Error saving site: ' + (error.response?.data?.detail || error.message))
     }
   }
 

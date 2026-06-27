@@ -3,7 +3,7 @@ import {
   Shield, Search, Download, CheckCircle,
   AlertTriangle, Car, Bot, User, RefreshCw, CreditCard, Clock
 } from 'lucide-react'
-import { supabase } from '../../supabase'
+import api from '../../api/axios'
 
 function fmtDate(str) {
   if (!str) return '—'
@@ -31,68 +31,8 @@ export default function SystemLogs() {
   const fetchLogs = async () => {
     setLoading(true)
     try {
-      // Check if system_logs table exists
-      const { data: sysLogs, error: sysErr } = await supabase
-        .from('system_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(100)
-
-      if (!sysErr && sysLogs) {
-        setLogs(sysLogs.map(l => ({
-          id: l.id,
-          type: (l.log_type || 'SYSTEM').toUpperCase(),
-          desc: l.description || l.event || '—',
-          status: l.status || 'info',
-          time: l.created_at,
-          site: l.site_name || l.site_id || '—',
-          plate: l.plate_number || l.vehicle_no || '—',
-          user: l.user_name || l.user_id || 'System',
-        })))
-        return
-      }
-
-      // Fallback: build from multiple tables
-      const [bookingsRes, paymentsRes, aiLogsRes] = await Promise.all([
-        supabase.from('bookings').select('id, vehicle_no, status, created_at, site_id, parking_sites(name)').order('created_at', { ascending: false }).limit(40),
-        supabase.from('payments').select('id, amount, status, created_at').order('created_at', { ascending: false }).limit(40),
-        supabase.from('ai_logs').select('id, plate_number, vehicle_no, confidence, confidence_score, status, detected_at, created_at, parking_sites(name)').order('created_at', { ascending: false }).limit(40),
-      ])
-
-      const combined = [
-        ...(bookingsRes.data || []).map(b => ({
-          id:     `b-${b.id}`,
-          type:   'BOOKING',
-          desc:   `Booking ${b.status} — vehicle ${b.vehicle_no || 'unknown'}`,
-          status: b.status,
-          time:   b.created_at,
-          site:   b.parking_sites?.name || '—',
-          plate:  b.vehicle_no || '—',
-          user:   'System',
-        })),
-        ...(paymentsRes.data || []).map(p => ({
-          id:     `p-${p.id}`,
-          type:   'PAYMENT',
-          desc:   `Payment Rs. ${p.amount || 0} — ${p.status}`,
-          status: p.status,
-          time:   p.created_at,
-          site:   '—',
-          plate:  '—',
-          user:   'System',
-        })),
-        ...(aiLogsRes.data || []).map(a => ({
-          id:     `ai-${a.id}`,
-          type:   'AI_DETECT',
-          desc:   `Plate detected: ${a.plate_number || a.vehicle_no || '???'} — ${Math.round((a.confidence || a.confidence_score || 0) * 100)}% confidence`,
-          status: a.status || 'info',
-          time:   a.detected_at || a.created_at,
-          site:   a.parking_sites?.name || '—',
-          plate:  a.plate_number || a.vehicle_no || '???',
-          user:   'AI System',
-        })),
-      ].sort((a, b) => new Date(b.time) - new Date(a.time))
-
-      setLogs(combined)
+      const res = await api.get('/auth/admin/logs/')
+      setLogs(res.data || [])
     } catch (err) {
       console.error('SystemLogs fetch error:', err)
     } finally {
@@ -102,14 +42,6 @@ export default function SystemLogs() {
 
   useEffect(() => {
     fetchLogs()
-
-    const channel = supabase
-      .channel('system-logs-realtime')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bookings' }, fetchLogs)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'payments' }, fetchLogs)
-      .subscribe()
-
-    return () => supabase.removeChannel(channel)
   }, [])
 
   const handleExportCSV = () => {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { supabase } from '../../supabase'
+import api from '../../api/axios'
 import { Wallet, TrendingUp, Download, Search, Clock, DollarSign } from 'lucide-react'
 import { getUser } from '../../utils/auth'
 
@@ -10,52 +10,33 @@ const Payments = () => {
   const [payments, setPayments] = useState([])
   const [siteId, setSiteId] = useState(null)
   const [sites, setSites] = useState([])
+  const [monthlyRevenue, setMonthlyRevenue] = useState([])
 
   useEffect(() => {
-    fetchSiteAndPayments()
-    const channel = supabase
-     .channel('payments_live')
-     .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => fetchPayments())
-     .subscribe()
-    return () => supabase.removeChannel(channel)
+    fetchPayments()
   }, [])
 
-  const fetchSiteAndPayments = async () => {
-    const { user_id } = getUser()
-    if (!user_id) return
-    const { data: ownerSites } = await supabase
-      .from('parking_sites')
-      .select('*')
-      .eq('owner_id', user_id)
-      .order('name')
-    setSites(ownerSites || [])
-    if (ownerSites?.length) {
-      setSiteId(ownerSites[0].id)
-      await fetchPayments(ownerSites[0].id)
+  const fetchPayments = async () => {
+    try {
+      const res = await api.get('/payments/owner/')
+      const d = res.data
+      const mapped = (d.payments || []).map((p, i) => ({
+        id: p.id,
+        bookingId: p.id,
+        customer: p.plate_number || 'Guest',
+        vehicle: p.plate_number || '-',
+        amount: parseFloat(p.amount) || 0,
+        method: p.payment_method || 'Cash',
+        date: p.paid_at ? p.paid_at.split('T')[0] : '-',
+        time: p.paid_at ? new Date(p.paid_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) : '-',
+        status: ['success', 'completed'].includes(p.status?.toLowerCase()) ? 'Completed' : 'Pending',
+        cashier: '-'
+      }))
+      setPayments(mapped)
+      setMonthlyRevenue(d.monthly_revenue || [])
+    } catch (err) {
+      console.error(err)
     }
-  }
-
-  const fetchPayments = async (currentSiteId = siteId) => {
-    if (!currentSiteId) return
-    const { data } = await supabase
-     .from('bookings')
-     .select(`booking_id, customer_name, vehicle_no, amount, payment_status, payment_method, booking_date, created_at, cashiers(name)`)
-     .eq('site_id', currentSiteId)
-     .order('created_at', { ascending: false })
-
-    const mapped = (data || []).map((b, i) => ({
-      id: `PAY${String(i+1).padStart(3,'0')}`,
-      bookingId: b.booking_id,
-      customer: b.customer_name || 'Guest',
-      vehicle: b.vehicle_no || '-',
-      amount: b.amount || 0,
-      method: b.payment_method || 'Cash',
-      date: b.booking_date,
-      time: new Date(b.created_at).toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' }),
-      status: b.payment_status === 'Paid'? 'Completed' : 'Pending',
-      cashier: b.cashiers?.name || '-'
-    }))
-    setPayments(mapped)
   }
 
   const isDateInRange = (date, filter) => {

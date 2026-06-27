@@ -17,6 +17,10 @@ from .views import (
     AdminToggleUserStatusView,
     AdminApproveOwnerView,
     AdminDashboardStatsView,
+    AdminSystemLogsView,
+    OwnerDashboardStatsView,
+    OwnerCashierView,
+    OwnerCashierDetailView,
     # Registration query views
     SubmitRegistrationQueryView,
     AdminRegistrationQueryListView,
@@ -48,6 +52,7 @@ urlpatterns = [
     path("admin/users/<uuid:pk>/toggle/", AdminToggleUserStatusView.as_view(), name="admin-toggle-user"),
     path("admin/owners/<uuid:pk>/approve/", AdminApproveOwnerView.as_view(), name="admin-approve-owner"),
     path("admin/stats/", AdminDashboardStatsView.as_view(), name="admin-dashboard-stats"),
+    path("admin/logs/", AdminSystemLogsView.as_view(), name="admin-system-logs"),
 
     # GET  /api/auth/admin/registration-queries/
     path("admin/registration-queries/", AdminRegistrationQueryListView.as_view(), name="admin-registration-queries"),
@@ -63,4 +68,9 @@ urlpatterns = [
 
     # GET /api/auth/admin/notifications/count/
     path("admin/notifications/count/", AdminNotificationCountView.as_view(), name="admin-notification-count"),
+
+    # ── Owner endpoints ──
+    path("owner/dashboard/", OwnerDashboardStatsView.as_view(), name="owner-dashboard-stats"),
+    path("owner/cashiers/", OwnerCashierView.as_view(), name="owner-cashiers"),
+    path("owner/cashiers/<uuid:cashier_id>/", OwnerCashierDetailView.as_view(), name="owner-cashier-detail"),
 ]

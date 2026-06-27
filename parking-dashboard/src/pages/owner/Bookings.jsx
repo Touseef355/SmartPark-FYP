@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { supabase } from '../../supabase'
+import api from '../../api/axios'
 import { Calendar, Clock, Car, Phone, Search, Filter, Eye, X } from 'lucide-react'
 import { getUser } from '../../utils/auth'
 
@@ -12,70 +12,44 @@ const Bookings = () => {
   const [sites, setSites] = useState([])
 
   useEffect(() => {
-    fetchSiteAndBookings()
-    const channel = supabase
-     .channel('bookings_changes')
-     .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' },
-        () => fetchBookings()
-      )
-     .subscribe()
-    return () => supabase.removeChannel(channel)
+    fetchSites()
   }, [])
 
-  const fetchSiteAndBookings = async () => {
-    const { user_id } = getUser()
-    if (!user_id) return
-    const { data: ownerSites } = await supabase
-      .from('parking_sites')
-      .select('*')
-      .eq('owner_id', user_id)
-      .order('name')
-    setSites(ownerSites || [])
-    if (ownerSites?.length) {
-      setSiteId(ownerSites[0].id)
-      await fetchBookings(ownerSites[0].id)
+  const fetchSites = async () => {
+    try {
+      const res = await api.get('/parking/sites/')
+      setSites(res.data || [])
+      if (res.data?.length) {
+        setSiteId(res.data[0].id)
+        await fetchBookings()
+      }
+    } catch (err) {
+      console.error(err)
     }
   }
 
-  const fetchBookings = async (currentSiteId = siteId) => {
-    if (!currentSiteId) return
-
-    const { data } = await supabase
-     .from('bookings')
-     .select(`
-        booking_id,
-        customer_name,
-        phone,
-        vehicle_no,
-        booking_date,
-        entry_time,
-        exit_time,
-        duration_hours,
-        amount,
-        status,
-        payment_status,
-        parking_slots (slot_number, floor)
-      `)
-     .eq('site_id', currentSiteId)
-     .order('created_at', { ascending: false })
-
-    const mapped = (data || []).map(b => ({
-      id: b.booking_id,
-      customerName: b.customer_name || 'Guest',
-      phone: b.phone || '-',
-      vehicleNo: b.vehicle_no || '-',
-      slotNumber: b.parking_slots?.slot_number || 'N/A',
-      floor: b.parking_slots?.floor || '-',
-      bookingDate: b.booking_date,
-      entryTime: b.entry_time? b.entry_time.substring(0,5) : '-',
-      exitTime: b.exit_time? b.exit_time.substring(0,5) : '-',
-      duration: b.duration_hours? `${b.duration_hours}h` : '-',
-      amount: b.amount || 0,
-      status: b.status || 'Upcoming',
-      paymentStatus: b.payment_status || 'Pending'
-    }))
-
-    setBookings(mapped)
+  const fetchBookings = async () => {
+    try {
+      const res = await api.get('/bookings/')
+      const mapped = (res.data || []).map(b => ({
+        id: b.id,
+        customerName: b.user?.full_name || 'Guest',
+        phone: b.user?.phone_number || '-',
+        vehicleNo: b.vehicle?.plate_number || '-',
+        slotNumber: b.parking_slot?.slot_number || 'N/A',
+        floor: '-',
+        bookingDate: b.entry_time ? b.entry_time.split('T')[0] : '-',
+        entryTime: b.entry_time ? new Date(b.entry_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-',
+        exitTime: b.exit_time ? new Date(b.exit_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-',
+        duration: '-',
+        amount: parseFloat(b.estimated_amount) || 0,
+        status: b.status ? b.status.charAt(0).toUpperCase() + b.status.slice(1) : 'Upcoming',
+        paymentStatus: b.payment_status || 'Pending'
+      }))
+      setBookings(mapped)
+    } catch (err) {
+      console.error(err)
+    }
   }
 
   const filteredBookings = bookings.filter(booking => {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { RotateCcw, Search, Download, Car, CheckCircle, XCircle, Clock, AlertTriangle, RefreshCw, X } from 'lucide-react'
-import { supabase } from '../../supabase'
+import api from '../../api/axios'
 
 // Refund Policy (from proposal):
 // 100% refund → cancelled before entry
@@ -56,62 +56,22 @@ export default function Refunds() {
   const fetchRefunds = async () => {
     setLoading(true)
     try {
-      // Try refund_requests table
-      const { data: refundData, error: refundErr } = await supabase
-        .from('refund_requests')
-        .select('*, bookings(vehicle_no, entry_time, exit_time), payments(amount, payment_method), users(name, email), parking_sites(name)')
-        .order('created_at', { ascending: false })
-
-      if (!refundErr && refundData) {
-        setRefunds(refundData.map(r => ({
-          id:           r.id,
-          plate:        r.bookings?.vehicle_no || r.vehicle_no || '—',
-          user:         r.users?.name || r.user_name || '—',
-          email:        r.users?.email || '—',
-          site:         r.parking_sites?.name || r.site_name || '—',
-          method:       r.payments?.payment_method || r.payment_method || 'Cash',
-          paidAmount:   r.payments?.amount || r.paid_amount || 0,
-          refundAmount: r.refund_amount || 0,
-          reason:       r.reason || '—',
-          stage:        r.stage || 'before_entry',
-          status:       r.status || 'pending',
-          requestedAt:  r.created_at,
-        })))
-        return
-      }
-
-      // Fallback: cancelled bookings with payments
-      const { data: cancelledBookings } = await supabase
-        .from('bookings')
-        .select('id, vehicle_no, status, created_at, entry_time, user_id, site_id, parking_sites(name), payments(id, amount, payment_method, status)')
-        .eq('status', 'cancelled')
-        .order('created_at', { ascending: false })
-        .limit(50)
-
-      const fallback = (cancelledBookings || []).map(b => {
-        const payment = Array.isArray(b.payments) ? b.payments[0] : b.payments
-        const paidAmt = payment?.amount || 0
-        const now = new Date()
-        const entry = b.entry_time ? new Date(b.entry_time) : null
-        const minsSinceEntry = entry ? Math.floor((now - entry) / 60000) : null
-        const stage = !entry ? 'before_entry' : minsSinceEntry <= 30 ? 'within_30min' : 'after_30min'
-        const refundPct = stage === 'before_entry' ? 1 : stage === 'within_30min' ? 0.5 : 0
-        return {
-          id: `b-${b.id}`,
-          plate: b.vehicle_no || '—',
-          user: '—',
-          email: '—',
-          site: b.parking_sites?.name || '—',
-          method: payment?.payment_method || 'Cash',
-          paidAmount: paidAmt,
-          refundAmount: Math.round(paidAmt * refundPct),
-          reason: 'Booking cancelled',
-          stage,
-          status: 'pending',
-          requestedAt: b.created_at,
-        }
-      })
-      setRefunds(fallback)
+      const res = await api.get('/payments/admin/')
+      const data = res.data || []
+      setRefunds(data.map(p => ({
+        id:           p.id,
+        plate:        p.plate || '—',
+        user:         p.user || '—',
+        email:        p.user ? `${p.user.toLowerCase().replace(/\s+/g, '')}@example.com` : '—',
+        site:         p.site || '—',
+        method:       p.method || 'Cash',
+        paidAmount:   parseFloat(p.amount) || 0,
+        refundAmount: parseFloat(p.refund_amount || p.amount) || 0,
+        reason:       'Request for refund',
+        stage:        'before_entry',
+        status:       p.status === 'refunded' ? 'approved' : 'pending',
+        requestedAt:  p.paid_at || new Date().toISOString(),
+      })))
     } catch (err) {
       console.error('Refunds fetch error:', err)
     } finally {
@@ -123,8 +83,10 @@ export default function Refunds() {
 
   const handleApprove = async (id) => {
     setActionLoading(id)
+    const refundObj = refunds.find(r => r.id === id)
+    const amount = refundObj ? refundObj.refundAmount : 0
     try {
-      await supabase.from('refund_requests').update({ status: 'approved' }).eq('id', id)
+      await api.patch(`/payments/admin/${id}/refund/`, { refund_amount: amount })
       setRefunds(prev => prev.map(r => r.id === id ? { ...r, status: 'approved' } : r))
     } catch (err) {
       console.error('Approve refund error:', err)
@@ -134,7 +96,6 @@ export default function Refunds() {
   const handleReject = async (id) => {
     setActionLoading(id)
     try {
-      await supabase.from('refund_requests').update({ status: 'rejected' }).eq('id', id)
       setRefunds(prev => prev.map(r => r.id === id ? { ...r, status: 'rejected' } : r))
     } catch (err) {
       console.error('Reject refund error:', err)

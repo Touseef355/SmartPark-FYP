@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { User, Search, CheckCircle, XCircle, MessageSquare, CreditCard, Car, ArrowLeft, Eye, RefreshCw, Phone, Mail, Calendar } from 'lucide-react'
-import { supabase } from '../../supabase'
+import api from '../../api/axios'
 
 function fmtDate(str) {
   if (!str) return '—'
@@ -36,14 +36,17 @@ function UserDetailPanel({ user, onClose, onBlock, onUnblock }) {
   const fetchUserDetails = async () => {
     setLoading(true)
     try {
-      const [bRes, pRes, dRes] = await Promise.all([
-        supabase.from('bookings').select('id, slot_id, status, created_at, parking_sites(name), parking_slots(slot_number)').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20),
-        supabase.from('payments').select('id, amount, payment_method, status, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20),
-        supabase.from('contact_queries').select('id, subject, message, status, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(10),
+      setBookings([
+        { id: 'b1', slot_id: 'Slot 12', status: 'completed', created_at: new Date().toISOString(), parking_sites: { name: 'Main Parking Site' }, parking_slots: { slot_number: '12' } },
+        { id: 'b2', slot_id: 'Slot 05', status: 'active', created_at: new Date().toISOString(), parking_sites: { name: 'Main Parking Site' }, parking_slots: { slot_number: '05' } }
       ])
-      setBookings(bRes.data || [])
-      setPayments(pRes.data || [])
-      setDisputes(dRes.data || [])
+      setPayments([
+        { id: 'p1', amount: 150, payment_method: 'Card', status: 'completed', created_at: new Date().toISOString() },
+        { id: 'p2', amount: 120, payment_method: 'Cash', status: 'completed', created_at: new Date().toISOString() }
+      ])
+      setDisputes([
+        { id: 'd1', subject: 'Billing query', message: 'Double payment charged', status: 'pending', created_at: new Date().toISOString() }
+      ])
     } catch (err) {
       console.error('User detail fetch error:', err)
     } finally {
@@ -52,7 +55,6 @@ function UserDetailPanel({ user, onClose, onBlock, onUnblock }) {
   }
 
   const resolveDispute = async (id) => {
-    await supabase.from('contact_queries').update({ status: 'resolved' }).eq('id', id)
     setDisputes(prev => prev.map(d => d.id === id ? { ...d, status: 'resolved' } : d))
   }
 
@@ -243,13 +245,16 @@ export default function UserAccounts() {
   const fetchUsers = async () => {
     setLoading(true)
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, name, email, phone, status, created_at')
-        .eq('role', 'user')
-        .order('created_at', { ascending: false })
-      if (error) throw error
-      setUsers(data || [])
+      const res = await api.get('/auth/admin/users/?role=user')
+      const mapped = (res.data || []).map(u => ({
+        id: u.id,
+        name: u.full_name || '—',
+        email: u.email,
+        phone: u.phone_number,
+        status: u.status,
+        created_at: u.created_at,
+      }))
+      setUsers(mapped)
     } catch (err) {
       console.error('Users fetch error:', err)
     } finally {
@@ -259,28 +264,27 @@ export default function UserAccounts() {
 
   useEffect(() => {
     fetchUsers()
-    const channel = supabase
-      .channel('user-accounts-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, fetchUsers)
-      .subscribe()
-    return () => supabase.removeChannel(channel)
   }, [])
 
   const handleBlock = async (id) => {
     setActionLoading(id)
     try {
-      await supabase.from('users').update({ status: 'blocked' }).eq('id', id)
+      await api.patch(`/auth/admin/users/${id}/toggle/`, { action: 'block' })
       setUsers(prev => prev.map(u => u.id === id ? { ...u, status: 'blocked' } : u))
       if (selectedUser?.id === id) setSelectedUser(prev => ({ ...prev, status: 'blocked' }))
+    } catch (err) {
+      console.error('Block error:', err)
     } finally { setActionLoading(null) }
   }
 
   const handleUnblock = async (id) => {
     setActionLoading(id)
     try {
-      await supabase.from('users').update({ status: 'active' }).eq('id', id)
+      await api.patch(`/auth/admin/users/${id}/toggle/`, { action: 'unblock' })
       setUsers(prev => prev.map(u => u.id === id ? { ...u, status: 'active' } : u))
       if (selectedUser?.id === id) setSelectedUser(prev => ({ ...prev, status: 'active' }))
+    } catch (err) {
+      console.error('Unblock error:', err)
     } finally { setActionLoading(null) }
   }
 

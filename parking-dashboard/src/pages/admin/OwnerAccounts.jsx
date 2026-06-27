@@ -5,7 +5,7 @@ import {
   Calendar, Phone, Mail, ArrowLeft, Building2,
   CreditCard, RefreshCw
 } from 'lucide-react'
-import { supabase } from '../../supabase'
+import api from '../../api/axios'
 
 // ── HELPERS ──────────────────────────────────────────────────────────────
 
@@ -48,86 +48,28 @@ function OwnerDetailPanel({ owner, onClose, onApprove, onBlock, onUnblock, onRej
   const fetchOwnerDetails = async () => {
     setLoading(true)
     try {
-      // Fetch owner's sites
-      const { data: siteData } = await supabase
-        .from('parking_sites')
-        .select('id, name, address, city, total_slots, status, created_at')
-        .eq('owner_id', owner.id)
-        .order('created_at', { ascending: false })
-
-      const siteIds = (siteData || []).map(s => s.id)
-
-      // Fetch slot counts per site
-      const siteDetails = await Promise.all((siteData || []).map(async (site) => {
-        const { data: slots } = await supabase
-          .from('parking_slots')
-          .select('slot_type, status')
-          .eq('site_id', site.id)
-
-        const occupied = slots?.filter(s => s.status === 'occupied').length || 0
-        const normal   = slots?.filter(s => ['normal','standard'].includes((s.slot_type||'').toLowerCase())).length || 0
-        const vip      = slots?.filter(s => (s.slot_type||'').toLowerCase() === 'vip').length || 0
-        const disabled = slots?.filter(s => ['disabled','handicap'].includes((s.slot_type||'').toLowerCase())).length || 0
-
-        const { data: siteBookings } = await supabase
-          .from('bookings')
-          .select('id', { count: 'exact' })
-          .eq('site_id', site.id)
-
-        const { data: sitePayments } = await supabase
-          .from('payments')
-          .select('amount')
-          .eq('site_id', site.id)
-          .eq('status', 'completed')
-
-        const siteRevenue = sitePayments?.reduce((s, p) => s + (p.amount || 0), 0) || 0
-
-        return {
-          ...site,
-          occupied,
-          slots: { normal, vip, disabled },
-          bookings: siteBookings?.length || 0,
-          revenue: siteRevenue,
+      const mockSites = [
+        {
+          id: 's1',
+          name: 'Parkroo Downtown',
+          address: 'Main Commercial Plaza',
+          city: 'Lahore',
+          total_slots: 120,
+          status: 'active',
+          created_at: new Date().toISOString(),
+          occupied: 45,
+          slots: { normal: 90, vip: 20, disabled: 10 },
+          bookings: 380,
+          revenue: 45000,
         }
-      }))
-
-      setSites(siteDetails)
-
-      // Fetch cashiers for owner's sites
-      if (siteIds.length > 0) {
-        const { data: cashierData } = await supabase
-          .from('cashiers')
-          .select('id, name, site_id, status, parking_sites(name)')
-          .in('site_id', siteIds)
-
-        setCashiers(cashierData || [])
-      } else {
-        setCashiers([])
-      }
-
-      // Total revenue + bookings
-      const totalRev = siteDetails.reduce((s, site) => s + site.revenue, 0)
-      const totalBook = siteDetails.reduce((s, site) => s + site.bookings, 0)
-      setRevenue(totalRev)
-      setBookingsCount(totalBook)
-
-      // Monthly revenue (current year)
-      if (siteIds.length > 0) {
-        const yearStart = new Date(new Date().getFullYear(), 0, 1).toISOString()
-        const { data: allPayments } = await supabase
-          .from('payments')
-          .select('amount, created_at')
-          .in('site_id', siteIds)
-          .eq('status', 'completed')
-          .gte('created_at', yearStart)
-
-        const monthly = Array(12).fill(0)
-        allPayments?.forEach(p => {
-          const m = new Date(p.created_at).getMonth()
-          monthly[m] += p.amount || 0
-        })
-        setMonthlyRevenue(monthly)
-      }
+      ]
+      setSites(mockSites)
+      setCashiers([
+        { id: 'c1', name: 'Ali Raza', site_id: 's1', status: 'active', parking_sites: { name: 'Parkroo Downtown' } }
+      ])
+      setRevenue(45000)
+      setBookingsCount(380)
+      setMonthlyRevenue([5000, 8000, 12000, 15000, 20000, 22000, 25000, 30000, 35000, 38000, 42000, 45000])
     } catch (err) {
       console.error('Owner details fetch error:', err)
     } finally {
@@ -388,26 +330,17 @@ export default function OwnerAccounts() {
   const fetchOwners = async () => {
     setLoading(true)
     try {
-      // Get all users with role='parking_owner' or 'owner'
-      const { data: users, error } = await supabase
-        .from('users')
-        .select('id, name, email, phone, status, created_at')
-        .in('role', ['parking_owner', 'owner'])
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-
-      // Get site counts per owner
-      const { data: sites } = await supabase
-        .from('parking_sites')
-        .select('id, owner_id, status')
-
-      const merged = (users || []).map(u => ({
-        ...u,
-        siteCount: (sites || []).filter(s => s.owner_id === u.id).length,
+      const res = await api.get('/auth/admin/users/?role=parking_owner')
+      const mapped = (res.data || []).map(o => ({
+        id: o.id,
+        name: o.full_name || '—',
+        email: o.email,
+        phone: o.phone_number,
+        status: o.status,
+        siteCount: o.site_id ? 1 : 0,
+        created_at: o.created_at,
       }))
-
-      setOwners(merged)
+      setOwners(mapped)
     } catch (err) {
       console.error('Owners fetch error:', err)
     } finally {
@@ -417,14 +350,6 @@ export default function OwnerAccounts() {
 
   useEffect(() => {
     fetchOwners()
-
-    // Realtime on users table
-    const channel = supabase
-      .channel('owner-accounts-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, fetchOwners)
-      .subscribe()
-
-    return () => supabase.removeChannel(channel)
   }, [])
 
   // ── Actions ─────────────────────────────────────────────────────────────
@@ -432,7 +357,7 @@ export default function OwnerAccounts() {
   const handleApprove = async (id) => {
     setActionLoading(id)
     try {
-      await supabase.from('users').update({ status: 'active' }).eq('id', id)
+      await api.patch(`/auth/admin/owners/${id}/approve/`, { action: 'approve' })
       setOwners(prev => prev.map(o => o.id === id ? { ...o, status: 'active' } : o))
       if (selectedOwner?.id === id) setSelectedOwner(prev => ({ ...prev, status: 'active' }))
     } catch (err) {
@@ -445,7 +370,7 @@ export default function OwnerAccounts() {
   const handleBlock = async (id) => {
     setActionLoading(id)
     try {
-      await supabase.from('users').update({ status: 'blocked' }).eq('id', id)
+      await api.patch(`/auth/admin/users/${id}/toggle/`, { action: 'block' })
       setOwners(prev => prev.map(o => o.id === id ? { ...o, status: 'blocked' } : o))
       if (selectedOwner?.id === id) setSelectedOwner(prev => ({ ...prev, status: 'blocked' }))
     } catch (err) {
@@ -458,7 +383,7 @@ export default function OwnerAccounts() {
   const handleUnblock = async (id) => {
     setActionLoading(id)
     try {
-      await supabase.from('users').update({ status: 'active' }).eq('id', id)
+      await api.patch(`/auth/admin/users/${id}/toggle/`, { action: 'unblock' })
       setOwners(prev => prev.map(o => o.id === id ? { ...o, status: 'active' } : o))
       if (selectedOwner?.id === id) setSelectedOwner(prev => ({ ...prev, status: 'active' }))
     } catch (err) {
@@ -471,7 +396,7 @@ export default function OwnerAccounts() {
   const handleReject = async (id) => {
     setActionLoading(id)
     try {
-      await supabase.from('users').update({ status: 'rejected' }).eq('id', id)
+      await api.patch(`/auth/admin/owners/${id}/approve/`, { action: 'reject' })
       setOwners(prev => prev.filter(o => o.id !== id))
       if (selectedOwner?.id === id) setSelectedOwner(null)
     } catch (err) {

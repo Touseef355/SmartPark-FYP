@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { supabase } from '../../supabase'
+import api from '../../api/axios'
 import { FileText, Download, TrendingUp, Calendar, DollarSign, Users, Car, BarChart3 } from 'lucide-react'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { getUser } from '../../utils/auth'
@@ -12,34 +12,31 @@ const Reports = () => {
   const [cashiersList, setCashiersList] = useState([])
   const [sites, setSites] = useState([])
   const [siteId, setSiteId] = useState(null)
+  const [reportData, setReportData] = useState([])
 
   useEffect(() => {
     fetchData()
   }, [])
 
-  const fetchData = async (currentSiteId = siteId) => {
-    let activeSiteId = currentSiteId
-    if (!activeSiteId) {
-      const { user_id } = getUser()
-      if (!user_id) return
-      const { data: ownerSites } = await supabase
-        .from('parking_sites')
-        .select('*')
-        .eq('owner_id', user_id)
-        .order('name')
-      setSites(ownerSites || [])
-      if (!ownerSites?.length) return
-      activeSiteId = ownerSites[0].id
-      setSiteId(activeSiteId)
+  const fetchData = async () => {
+    try {
+      const resSites = await api.get('/parking/sites/')
+      setSites(resSites.data || [])
+      
+      const resReport = await api.get('/payments/owner/')
+      setReportData(resReport.data.monthly_revenue || [])
+      
+      const resBookings = await api.get('/bookings/')
+      const mappedBookings = (resBookings.data || []).map(b => ({
+        ...b,
+        booking_date: b.entry_time ? b.entry_time.split('T')[0] : new Date().toISOString().split('T')[0],
+        payment_status: b.payment_status === 'paid' || b.payment_status === 'Paid' ? 'Paid' : 'Pending',
+        amount: parseFloat(b.estimated_amount) || 0
+      }))
+      setBookings(mappedBookings)
+    } catch (err) {
+      console.error(err)
     }
-
-    const { data: b } = await supabase.from('bookings').select('*').eq('site_id', activeSiteId)
-    const { data: s } = await supabase.from('parking_slots').select('*').eq('site_id', activeSiteId)
-    const { data: c } = await supabase.from('cashiers').select('*').eq('site_id', activeSiteId)
-
-    setBookings(b || [])
-    setSlots(s || [])
-    setCashiersList(c || [])
   }
 
   // Full data with dates - NOW FROM SUPABASE

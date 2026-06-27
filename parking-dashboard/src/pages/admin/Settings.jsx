@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Settings, Clock, AlertTriangle, CreditCard, Save, RotateCcw, Shield, Eye } from 'lucide-react'
-import { supabase } from '../../supabase'
+import api from '../../api/axios'
 
 // ── Section Card ──────────────────────────────────
 function SectionCard({ title, description, icon: Icon, children }) {
@@ -102,16 +102,8 @@ export default function AdminSettings() {
   const fetchSettings = async () => {
     setLoading(true)
     try {
-      const { data, error } = await supabase
-        .from('system_settings')
-        .select('*')
-        .eq('id', 1)
-        .maybeSingle()
-
-      if (error) {
-        throw error
-      }
-
+      const res = await api.get('/parking/admin/settings/')
+      const data = res.data
       if (data) {
         setSettings({
           grace_period_minutes:     data.grace_period_minutes ?? 10,
@@ -136,7 +128,7 @@ export default function AdminSettings() {
         })
       }
     } catch (err) {
-      console.error('Error fetching settings from Supabase:', err)
+      console.error('Error fetching settings from API:', err)
     } finally {
       setLoading(false)
     }
@@ -151,33 +143,7 @@ export default function AdminSettings() {
 
   const handleSave = async () => {
     try {
-      const { error } = await supabase
-        .from('system_settings')
-        .upsert({
-          id: 1,
-          grace_period_minutes:     settings.grace_period_minutes,
-          overstay_rate_per_hour:   settings.overstay_rate_per_hour,
-          reservation_lock_minutes: settings.reservation_lock_minutes,
-          max_booking_days:         settings.max_booking_days,
-          cash_enabled:             settings.cash_enabled,
-          easypaisa_enabled:        settings.easypaisa_enabled,
-          card_enabled:             settings.card_enabled,
-          refund_100_before_start:  settings.refund_100_before_start,
-          refund_percent:           settings.refund_percent,
-          refund_window_minutes:    settings.refund_window_minutes,
-          notify_new_owner:         settings.notify_new_owner,
-          notify_overstay:          settings.notify_overstay,
-          notify_payment_received:  settings.notify_payment_received,
-          notify_manual_override:   settings.notify_manual_override,
-          require_phone_otp:        settings.require_phone_otp,
-          session_timeout_minutes:  settings.session_timeout_minutes,
-          max_login_attempts:       settings.max_login_attempts,
-          show_confidence_score:    settings.show_confidence_score,
-          show_owner_revenue:       settings.show_owner_revenue,
-        })
-      if (error) {
-        throw error
-      }
+      await api.put('/parking/admin/settings/', settings)
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     } catch (err) {
@@ -209,15 +175,7 @@ export default function AdminSettings() {
       show_owner_revenue: true
     }
     try {
-      const { error } = await supabase
-        .from('system_settings')
-        .upsert({
-          id: 1,
-          ...defaults
-        })
-      if (error) {
-        throw error
-      }
+      await api.put('/parking/admin/settings/', defaults)
       setSettings(defaults)
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)

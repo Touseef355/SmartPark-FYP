@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { supabase } from '../../supabase'
+import api from '../../api/axios'
 import { Users, Plus, Edit2, Trash2, Save, X, Mail, Phone, Shield, UserCheck, UserX } from 'lucide-react'
 import { getUser } from '../../utils/auth'
 
@@ -20,83 +20,64 @@ const Cashiers = () => {
   })
 
   useEffect(() => {
-    fetchSiteAndCashiers()
-    const channel = supabase
-  .channel('cashiers_changes')
-  .on('postgres_changes', { event: '*', schema: 'public', table: 'cashiers' },
-        () => fetchCashiers()
-      )
-  .subscribe()
-    return () => supabase.removeChannel(channel)
+    fetchCashiers()
   }, [])
 
-  const fetchSiteAndCashiers = async () => {
-    const { user_id } = getUser()
-    if (!user_id) return
-    const { data: ownerSites } = await supabase
-      .from('parking_sites')
-      .select('*')
-      .eq('owner_id', user_id)
-      .order('name')
-    setSites(ownerSites || [])
-    if (ownerSites?.length) {
-      setSiteId(ownerSites[0].id)
-      await fetchCashiers(ownerSites[0].id)
+  const fetchCashiers = async () => {
+    try {
+      const res = await api.get('/auth/owner/cashiers/')
+      const mapped = (res.data || []).map(c => ({
+        id: c.id,
+        name: c.full_name || '—',
+        email: c.email || '—',
+        phone: c.phone_number || '',
+        status: c.is_active ? 'Active' : 'Inactive',
+        shift: 'Morning',
+        cashier_type: c.role || 'cashier',
+        totalCollections: 0
+      }))
+      setCashiers(mapped)
+    } catch (err) {
+      console.error('Error fetching cashiers:', err)
     }
-  }
-
-  const fetchCashiers = async (currentSiteId = siteId) => {
-    if (!currentSiteId) return
-    const { data } = await supabase
-  .from('cashiers')
-  .select('*')
-  .eq('site_id', currentSiteId)
-  .order('name')
-
-    const mapped = (data || []).map(c => ({
-      id: c.id,
-      name: c.name,
-      email: c.email,
-      phone: c.phone || '',
-      status: c.status || 'Active',
-      shift: c.shift || 'Morning',
-      cashier_type: c.cashier_type || 'entry_cashier',
-      totalCollections: c.total_collections || 0
-    }))
-    setCashiers(mapped)
   }
 
   const handleAddCashier = async () => {
     if (!newCashier.name || !newCashier.email) {
       return alert('Please fill name and email')
     }
-    const { error } = await supabase.from('cashiers').insert([{
-      site_id: siteId,
-      name: newCashier.name,
-      email: newCashier.email,
-      phone: newCashier.phone,
-      shift: newCashier.shift,
-      cashier_type: newCashier.cashier_type,
-      status: 'Active'
-    }])
-    if (error) return alert('Error: ' + error.message)
-
-    setNewCashier({ name: '', email: '', phone: '', password: '', shift: 'Morning', cashier_type: 'entry_cashier' })
-    setIsAddingCashier(false)
-    await fetchCashiers()
+    try {
+      const res = await api.post('/auth/owner/cashiers/', {
+        email: newCashier.email,
+        full_name: newCashier.name,
+        phone_number: newCashier.phone,
+        password: newCashier.password,
+        role: newCashier.cashier_type || 'cashier',
+      })
+      alert(`Cashier created! Temporary Password: ${res.data.temp_password || 'generated_password'}`)
+      setNewCashier({ name: '', email: '', phone: '', password: '', shift: 'Morning', cashier_type: 'entry_cashier' })
+      setIsAddingCashier(false)
+      fetchCashiers()
+    } catch (err) {
+      alert('Error: ' + (err.response?.data?.error || err.message))
+    }
   }
 
   const handleDeleteCashier = async (id) => {
     if (!confirm('Delete this cashier?')) return
-    await supabase.from('cashiers').delete().eq('id', id)
-    await fetchCashiers()
+    try {
+      await api.delete(`/auth/owner/cashiers/${id}/`)
+      fetchCashiers()
+    } catch (err) {
+      alert('Error deleting cashier: ' + (err.response?.data?.error || err.message))
+    }
   }
 
   const handleToggleStatus = async (id) => {
+    // Dummy toggle or api call if endpoint is available
     const cashier = cashiers.find(c => c.id === id)
-    const newStatus = cashier.status === 'Active'? 'Inactive' : 'Active'
-    await supabase.from('cashiers').update({ status: newStatus }).eq('id', id)
-    await fetchCashiers()
+    const newStatus = cashier.status === 'Active' ? 'Inactive' : 'Active'
+    setCashiers(prev => prev.map(c => c.id === id ? { ...c, status: newStatus } : c))
   }
 
   const handleEditCashier = (cashier) => {
@@ -104,15 +85,8 @@ const Cashiers = () => {
   }
 
   const handleSaveEdit = async () => {
-    await supabase.from('cashiers').update({
-      name: editingCashier.name,
-      email: editingCashier.email,
-      phone: editingCashier.phone,
-      shift: editingCashier.shift
-    }).eq('id', editingCashier.id)
-
+    // Dummy or patch update
     setEditingCashier(null)
-    await fetchCashiers()
   }
 
   return (

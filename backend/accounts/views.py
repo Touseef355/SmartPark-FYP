@@ -621,6 +621,63 @@ class AdminDashboardStatsView(APIView):
         }, status=status.HTTP_200_OK)
 
 
+class AdminSystemLogsView(APIView):
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def get(self, request):
+        from bookings.models import Booking
+        from payments.models import Payment
+        from ai_module.models import AiLog
+
+        bookings = Booking.objects.select_related("parking_slot__parking_site", "vehicle").order_by("-created_at")[:40]
+        payments = Payment.objects.order_by("-paid_at")[:40]
+        ai_logs = AiLog.objects.select_related("booking__parking_slot__parking_site").order_by("-detected_at")[:40]
+
+        combined = []
+        for b in bookings:
+            combined.append({
+                "id": f"b-{b.id}",
+                "type": "BOOKING",
+                "desc": f"Booking {b.status} — vehicle {b.vehicle.plate_number if b.vehicle else 'unknown'}",
+                "status": b.status,
+                "time": b.created_at,
+                "site": b.parking_slot.parking_site.name if b.parking_slot and b.parking_slot.parking_site else "—",
+                "plate": b.vehicle.plate_number if b.vehicle else "—",
+                "user": "System",
+            })
+
+        for p in payments:
+            combined.append({
+                "id": f"p-{p.id}",
+                "type": "PAYMENT",
+                "desc": f"Payment Rs. {p.amount} — {p.status}",
+                "status": p.status,
+                "time": p.paid_at or p.created_at,
+                "site": "—",
+                "plate": "—",
+                "user": "System",
+            })
+
+        for a in ai_logs:
+            try:
+                site_name = a.booking.parking_slot.parking_site.name
+            except Exception:
+                site_name = "—"
+            combined.append({
+                "id": f"ai-{a.id}",
+                "type": "AI_DETECT",
+                "desc": f"Plate detected: {a.detected_plate_number} — {int(a.confidence_score * 100)}% confidence",
+                "status": a.status or "info",
+                "time": a.detected_at,
+                "site": site_name,
+                "plate": a.detected_plate_number,
+                "user": "AI System",
+            })
+
+        combined.sort(key=lambda x: x["time"], reverse=True)
+        return Response(combined[:100], status=status.HTTP_200_OK)
+
+
 # ─── Public: Submit a registration / contact query from landing page ──────────
 from .models import OwnerRegistrationQuery
 from .serializers import OwnerRegistrationQuerySerializer
@@ -1033,3 +1090,135 @@ class AdminNotificationCountView(APIView):
             'pending_general_queries': pending_general,
             'new_since': new_count,
         }, status=status.HTTP_200_OK)
+
+
+class IsOwner(BasePermission):
+    def has_permission(self, request, view):
+        return bool(
+            request.user and 
+            request.user.is_authenticated and 
+            request.user.role == "parking_owner"
+        )
+
+
+class OwnerDashboardStatsView(APIView):
+    permission_classes = [IsAuthenticated, IsOwner]
+
+    def get(self, request):
+        from parking.models import ParkingSite, ParkingSlot
+        from bookings.models import Booking
+        from payments.models import Payment
+        from django.db.models import Sum
+        from django.utils import timezone
+
+        today = timezone.now().date()
+        sites = ParkingSite.objects.filter(owner=request.user)
+        site_ids = sites.values_list('id', flat=True)
+
+        total_slots = ParkingSlot.objects.filter(
+            parking_site__in=site_ids).count()
+        occupied_slots = ParkingSlot.objects.filter(
+            parking_site__in=site_ids, is_occupied=True).count()
+
+        total_bookings = Booking.objects.filter(
+            parking_slot__parking_site__in=site_ids).count()
+        active_bookings = Booking.objects.filter(
+            parking_slot__parking_site__in=site_ids, 
+            status='active').count()
+
+        total_revenue = Payment.objects.filter(
+            booking__parking_slot__parking_site__in=site_ids,
+            status='success'
+        ).aggregate(total=Sum('amount'))['total'] or 0
+
+        today_revenue = Payment.objects.filter(
+            booking__parking_slot__parking_site__in=site_ids,
+            status='success', paid_at__date=today
+        ).aggregate(total=Sum('amount'))['total'] or 0
+
+        recent_bookings = Booking.objects.filter(
+            parking_slot__parking_site__in=site_ids
+        ).select_related(
+            'vehicle', 'parking_slot', 'parking_slot__parking_site'
+        ).order_by('-created_at')[:5]
+
+        recent_data = []
+        for b in recent_bookings:
+            recent_data.append({
+                'id': str(b.id),
+                'plate_number': b.vehicle.plate_number if b.vehicle else "—",
+                'slot_number': b.parking_slot.slot_number if b.parking_slot else "—",
+                'site_name': b.parking_slot.parking_site.name if b.parking_slot and b.parking_slot.parking_site else "—",
+                'status': b.status,
+                'entry_time': b.entry_time,
+                'estimated_amount': str(b.estimated_amount or 0),
+            })
+
+        return Response({
+            'total_sites': sites.count(),
+            'total_slots': total_slots,
+            'occupied_slots': occupied_slots,
+            'available_slots': total_slots - occupied_slots,
+            'total_bookings': total_bookings,
+            'active_bookings': active_bookings,
+            'total_revenue': str(total_revenue),
+            'today_revenue': str(today_revenue),
+            'recent_bookings': recent_data,
+        })
+
+
+class OwnerCashierView(APIView):
+    permission_classes = [IsAuthenticated, IsOwner]
+
+    def get(self, request):
+        cashiers = User.objects.filter(
+            role__in=['cashier', 'entry_cashier', 'exit_cashier'],
+            site=request.user.site
+        )
+        data = [{
+            'id': str(c.id),
+            'full_name': c.full_name,
+            'email': c.email,
+            'role': c.role,
+            'is_active': c.is_active,
+            'phone_number': c.phone_number,
+        } for c in cashiers]
+        return Response(data)
+
+    def post(self, request):
+        import secrets
+        data = request.data
+        password = data.get('password') or secrets.token_urlsafe(10)
+
+        if User.objects.filter(email=data.get('email')).exists():
+            return Response(
+                {'error': 'Email already exists'}, status=400)
+
+        cashier = User.objects.create_user(
+            email=data['email'],
+            full_name=data.get('full_name', ''),
+            phone_number=data.get('phone_number', ''),
+            password=password,
+            role=data.get('role', 'cashier'),
+            site=request.user.site,
+        )
+        return Response({
+            'id': str(cashier.id),
+            'full_name': cashier.full_name,
+            'email': cashier.email,
+            'role': cashier.role,
+            'temp_password': password,
+        }, status=201)
+
+
+class OwnerCashierDetailView(APIView):
+    permission_classes = [IsAuthenticated, IsOwner]
+
+    def delete(self, request, cashier_id):
+        try:
+            cashier = User.objects.get(
+                id=cashier_id, site=request.user.site)
+            cashier.delete()
+            return Response({'message': 'Cashier deleted'})
+        except User.DoesNotExist:
+            return Response({'error': 'Not found'}, status=404)

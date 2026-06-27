@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { supabase } from '../../supabase'
+import api from '../../api/axios'
 import { Calendar, TrendingUp, Users, Car, DollarSign, Clock, MapPin, RefreshCw } from 'lucide-react'
 import { getUser } from '../../utils/auth'
 
@@ -17,54 +17,30 @@ const OwnerDashboard = () => {
   const fetchDashboardData = async () => {
     setLoading(true)
     try {
-      const { name } = getUser()
-      const userId = localStorage.getItem('user_id')
-
-      // Get all sites for this owner
-      let siteQuery = supabase.from('parking_sites').select('*')
-      if (userId) siteQuery = siteQuery.eq('owner_id', userId)
-      const { data: sitesData, error } = await siteQuery
-
-      if (error) throw error
-      const mySites = sitesData || []
-      setSites(mySites)
-      const siteIds = mySites.map(s => s.id)
-
-      if (siteIds.length === 0) { setLoading(false); return }
-
-      // Fetch slots, bookings, payments in parallel
-      const [slotsRes, bookingsRes, paymentsRes] = await Promise.all([
-        supabase.from('parking_slots').select('status, site_id').in('site_id', siteIds),
-        supabase.from('bookings').select('id, vehicle_no, customer_name, status, amount, created_at, site_id').in('site_id', siteIds).order('created_at', { ascending: false }),
-        supabase.from('payments').select('amount, status, created_at, site_id').in('site_id', siteIds).eq('status', 'completed'),
-      ])
-
-      const slots    = slotsRes.data    || []
-      const bookings = bookingsRes.data || []
-      const payments = paymentsRes.data || []
-
-      const today = new Date().toISOString().split('T')[0]
-      const totalRevenue = payments.reduce((s, p) => s + (p.amount || 0), 0)
-      const todayRevenue = payments.filter(p => p.created_at?.startsWith(today)).reduce((s, p) => s + (p.amount || 0), 0)
-
+      const res = await api.get('/auth/owner/dashboard/')
+      const d = res.data
+      setSites([])
       setStats({
-        totalRevenue,
-        todayRevenue,
-        totalBookings:  bookings.length,
-        activeBookings: bookings.filter(b => ['active','upcoming','Active','Upcoming'].includes(b.status || '')).length,
-        totalSlots:     mySites.reduce((s, site) => s + (site.total_slots || 0), 0),
-        occupiedSlots:  slots.filter(s => ['occupied','Occupied'].includes(s.status || '')).length,
+        totalRevenue:   parseFloat(d.total_revenue) || 0,
+        todayRevenue:   parseFloat(d.today_revenue) || 0,
+        totalBookings:  d.total_bookings || 0,
+        activeBookings: d.active_bookings || 0,
+        totalSlots:     d.total_slots || 0,
+        occupiedSlots:  d.occupied_slots || 0,
       })
+      setRecentBookings(d.recent_bookings || [])
 
-      setRecentBookings(bookings.slice(0, 5))
-
-      // Monthly revenue (current year)
-      const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-      const monthly = MONTHS.map((m, i) => ({
-        month: m,
-        rev: payments.filter(p => new Date(p.created_at).getMonth() === i).reduce((s, p) => s + (p.amount || 0), 0)
-      }))
-      setMonthlyRevenue(monthly)
+      // Monthly revenue chart — try to get from payments/owner if available
+      try {
+        const payRes = await api.get('/payments/owner/')
+        const monthly = (payRes.data.monthly_revenue || []).map(m => ({
+          month: new Date(m.month).toLocaleString('default', { month: 'short' }),
+          rev: parseFloat(m.total) || 0,
+        }))
+        setMonthlyRevenue(monthly)
+      } catch (_) {
+        setMonthlyRevenue([])
+      }
     } catch (err) {
       console.error('Owner dashboard error:', err)
     } finally {

@@ -140,18 +140,23 @@ class AdminPaymentListView(APIView):
                 owner_name = p.booking.parking_slot.parking_site.owner.full_name
                 plate      = p.booking.vehicle.plate_number
                 user_name  = p.booking.user.full_name if p.booking.user else "—"
+                user_email = p.booking.user.email if p.booking.user else "—"
+                slot_number = p.booking.parking_slot.slot_number
             except Exception:
                 site_name  = "—"
                 owner_name = "—"
                 plate      = "—"
                 user_name  = "—"
+                user_email = "—"
+                slot_number = "—"
 
             data.append({
                 "id":             str(p.id),
-                "booking_id":     str(p.booking.id),
+                "booking_id":     str(p.booking.id) if p.booking else "—",
                 "site":           site_name,
                 "owner":          owner_name,
                 "user":           user_name,
+                "user_email":     user_email,
                 "plate":          plate,
                 "amount":         str(p.amount),
                 "refund_amount":  str(p.refund_amount) if p.refund_amount else None,
@@ -160,6 +165,7 @@ class AdminPaymentListView(APIView):
                 "status":         p.status,
                 "currency":       p.currency,
                 "paid_at":        p.paid_at,
+                "slot_number":    slot_number,
             })
 
         return Response(data, status=status.HTTP_200_OK)
@@ -210,3 +216,55 @@ class AdminPaymentRefundView(APIView):
                 {"message": "Payment refunded successfully"},
                 status=status.HTTP_200_OK,
             )
+
+
+class OwnerPaymentsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != 'parking_owner':
+            return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+
+        from parking.models import ParkingSite
+        from django.db.models import Sum
+        from django.db.models.functions import TruncMonth
+
+        sites = ParkingSite.objects.filter(owner=request.user)
+        payments = Payment.objects.filter(
+            booking__parking_slot__parking_site__in=sites
+        ).select_related(
+            'booking', 'booking__vehicle',
+            'booking__parking_slot__parking_site'
+        ).order_by('-paid_at')
+
+        monthly = payments.filter(status='success').annotate(
+            month=TruncMonth('paid_at')
+        ).values('month').annotate(
+            total=Sum('amount')
+        ).order_by('month')
+
+        data = []
+        for p in payments:
+            try:
+                plate = p.booking.vehicle.plate_number
+                site = p.booking.parking_slot.parking_site.name
+            except Exception:
+                plate = '—'
+                site = '—'
+            data.append({
+                'id': str(p.id),
+                'plate_number': plate,
+                'site_name': site,
+                'amount': str(p.amount),
+                'status': p.status,
+                'payment_method': p.payment_method,
+                'paid_at': p.paid_at,
+            })
+
+        return Response({
+            'payments': data,
+            'monthly_revenue': [
+                {'month': m['month'], 'total': str(m['total'])}
+                for m in monthly
+            ]
+        })

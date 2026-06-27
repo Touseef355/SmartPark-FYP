@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { CreditCard, Search, Download, TrendingUp, Car, RefreshCw, Filter } from 'lucide-react'
-import { supabase } from '../../supabase'
+import api from '../../api/axios'
 
 const METHOD_COLORS = {
   cash:      'bg-gray-100 text-gray-700',
@@ -55,13 +55,21 @@ export default function Payments() {
   const fetchPayments = async () => {
     setLoading(true)
     try {
-      const { data, error } = await supabase
-        .from('payments')
-        .select('*, parking_sites(name)')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      setPayments(data || [])
+      const res = await api.get('/payments/admin/')
+      const mapped = (res.data || []).map(p => ({
+        id: p.id,
+        booking_id: p.booking_id || '—',
+        slot_number: p.slot_number || '—',
+        vehicle_no: p.plate || '—',
+        parking_sites: { name: p.site || '—' },
+        amount: parseFloat(p.amount) || 0,
+        payment_method: p.method || 'Cash',
+        status: p.status,
+        created_at: p.paid_at || new Date().toISOString(),
+        user_name: p.user || '—',
+        user_email: p.user_email || '—',
+      }))
+      setPayments(mapped)
     } catch (err) {
       console.error('Payments fetch error:', err)
     } finally {
@@ -70,20 +78,17 @@ export default function Payments() {
   }
 
   const fetchSites = async () => {
-    const { data } = await supabase.from('parking_sites').select('id, name')
-    setSites(data || [])
+    try {
+      const res = await api.get('/parking/sites/')
+      setSites(res.data || [])
+    } catch (err) {
+      console.error('Sites fetch error:', err)
+    }
   }
 
   useEffect(() => {
     fetchPayments()
     fetchSites()
-
-    const channel = supabase
-      .channel('admin-payments-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, fetchPayments)
-      .subscribe()
-
-    return () => supabase.removeChannel(channel)
   }, [])
 
   // ── Derived stats
@@ -98,6 +103,8 @@ export default function Payments() {
     const matchSearch =
       (p.vehicle_no || '').toLowerCase().includes(search.toLowerCase()) ||
       siteName.toLowerCase().includes(search.toLowerCase()) ||
+      (p.user_name || '').toLowerCase().includes(search.toLowerCase()) ||
+      (p.user_email || '').toLowerCase().includes(search.toLowerCase()) ||
       String(p.id).includes(search)
     const matchStatus = filterStatus === 'all' || (p.status || '').toLowerCase() === filterStatus.toLowerCase()
     const matchMethod = filterMethod === 'all' || (p.payment_method || p.method || '').toLowerCase() === filterMethod.toLowerCase()
@@ -107,15 +114,19 @@ export default function Payments() {
 
   // ── CSV Export
   const handleExportCSV = () => {
-    const headers = ['ID', 'Vehicle', 'Site', 'Amount', 'Method', 'Status', 'Date']
+    const headers = ['ID', 'User', 'Email', 'Vehicle', 'Site', 'Amount', 'Method', 'Status', 'Date', 'Booking ID', 'Slot']
     const rows = filtered.map(p => [
       p.id,
+      p.user_name || '—',
+      p.user_email || '—',
       p.vehicle_no || '—',
       p.parking_sites?.name || '—',
       `Rs. ${p.amount || 0}`,
-      p.payment_method || p.method || 'Cash',
+      p.payment_method || 'Cash',
       p.status || '—',
-      fmtDate(p.created_at)
+      fmtDate(p.created_at),
+      p.booking_id || '—',
+      p.slot_number || '—'
     ])
     const csv  = [headers, ...rows].map(r => r.join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
@@ -186,7 +197,7 @@ export default function Payments() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search by plate, site or payment ID..."
+                placeholder="Search by plate, site, user or ID..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 className="pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
@@ -258,23 +269,27 @@ export default function Payments() {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="text-left text-xs font-medium text-gray-500 uppercase px-6 py-3">ID</th>
+                  <th className="text-left text-xs font-medium text-gray-500 uppercase px-6 py-3">User (Name / Email)</th>
                   <th className="text-left text-xs font-medium text-gray-500 uppercase px-6 py-3">Vehicle</th>
                   <th className="text-left text-xs font-medium text-gray-500 uppercase px-6 py-3">Site</th>
                   <th className="text-left text-xs font-medium text-gray-500 uppercase px-6 py-3">Amount</th>
                   <th className="text-left text-xs font-medium text-gray-500 uppercase px-6 py-3">Method</th>
                   <th className="text-left text-xs font-medium text-gray-500 uppercase px-6 py-3">Status</th>
+                  <th className="text-left text-xs font-medium text-gray-500 uppercase px-6 py-3">Booking ID / Slot</th>
                   <th className="text-left text-xs font-medium text-gray-500 uppercase px-6 py-3">Date</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-12 text-gray-400 text-sm">No payment records found.</td>
+                    <td colSpan={8} className="text-center py-12 text-gray-400 text-sm">No payment records found.</td>
                   </tr>
                 ) : filtered.map(p => (
                   <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 text-xs font-mono text-gray-500">#{String(p.id).slice(-6)}</td>
+                    <td className="px-6 py-4">
+                      <p className="text-sm font-medium text-gray-900">{p.user_name}</p>
+                      <p className="text-xs text-gray-400">{p.user_email}</p>
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
@@ -285,8 +300,12 @@ export default function Payments() {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">{p.parking_sites?.name || '—'}</td>
                     <td className="px-6 py-4 text-sm font-semibold text-gray-900">Rs. {(p.amount || 0).toLocaleString()}</td>
-                    <td className="px-6 py-4"><MethodBadge method={p.payment_method || p.method || 'Cash'} /></td>
+                    <td className="px-6 py-4"><MethodBadge method={p.payment_method || 'Cash'} /></td>
                     <td className="px-6 py-4"><StatusBadge status={p.status} /></td>
+                    <td className="px-6 py-4">
+                      <p className="text-xs font-mono text-gray-500">ID: {p.booking_id ? String(p.booking_id).slice(-6) : '—'}</p>
+                      <p className="text-sm text-gray-600">Slot: {p.slot_number}</p>
+                    </td>
                     <td className="px-6 py-4 text-sm text-gray-500">{fmtDate(p.created_at)}</td>
                   </tr>
                 ))}

@@ -1,9 +1,5 @@
-const API_BASE_URL = 'http://127.0.0.1:8000';
-
-// Supabase config
-const SUPABASE_URL = 'https://yvnjawshurzivvkkzzzd.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_3DGA6YVAaZwCCe82gDTZBA_UROwbiGF';
-const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+const API_BASE = window.API_BASE || 'http://127.0.0.1:8000';
+const DASHBOARD_BASE = window.DASHBOARD_BASE || 'http://localhost:5173';
 
 // ════════════════════════════════════════════
 // WAIT FOR DOM TO LOAD
@@ -85,7 +81,6 @@ function initializeModal() {
     window.goBack = goBack;
     window.togglePassword = togglePassword;
     window.handleLogin = handleLogin;
-    window.handleCashierTypeChange = handleCashierTypeChange;
 }
 
 // ════════════════════════════════════════════
@@ -237,11 +232,8 @@ function closeLoginModal() {
             selectedRole = null;
             const emailInput = document.getElementById('emailInput');
             const passwordInput = document.getElementById('passwordInput');
-            const cashierType = document.getElementById('cashierTypeInput');
             if (emailInput) emailInput.value = '';
             if (passwordInput) passwordInput.value = '';
-            if (cashierType) cashierType.value = '';
-            document.getElementById('cashierTypeGroup').style.display = 'none';
             hideError();
         }, 300);
     }
@@ -280,27 +272,22 @@ const ROLES = {
         icon: 'fas fa-user-shield',
         subtitle: 'System administrator — full access',
         backendRole: 'admin',
-        redirect: 'http://localhost:5173/admin/dashboard',
+        redirect: `${DASHBOARD_BASE}/admin/dashboard`,
     },
     owner: {
         label: 'Parking Owner',
         icon: 'fas fa-building',
         subtitle: 'Manage your parking site and revenue',
         backendRole: 'parking_owner',
-        redirect: 'http://localhost:5173/owner/dashboard',
+        redirect: `${DASHBOARD_BASE}/owner/dashboard`,
     },
     cashier: {
         label: 'Cashier',
         icon: 'fas fa-cash-register',
         subtitle: 'Handle entries, exits and payments',
         backendRole: null,
-        redirect: null,
+        redirect: `${DASHBOARD_BASE}/cashier/dashboard`,
     },
-};
-
-const CASHIER_REDIRECTS = {
-    entry_cashier: 'http://localhost:5173/cashier/entry',
-    exit_cashier: 'http://localhost:5173/cashier/exit',
 };
 
 function selectRole(role) {
@@ -319,41 +306,17 @@ function selectRole(role) {
     const roleSubtitle = document.getElementById('roleSubtitle');
     if (roleSubtitle) roleSubtitle.textContent = cfg.subtitle;
 
-    const cashierGroup = document.getElementById('cashierTypeGroup');
-    if (role === 'cashier') {
-        if (cashierGroup) cashierGroup.style.display = 'block';
-    } else {
-        if (cashierGroup) cashierGroup.style.display = 'none';
-    }
-
     showStep('login');
     setTimeout(() => {
-        if (role === 'cashier') {
-            const cashierInput = document.getElementById('cashierTypeInput');
-            if (cashierInput) cashierInput.focus();
-        } else {
-            const emailInput = document.getElementById('emailInput');
-            if (emailInput) emailInput.focus();
-        }
+        const emailInput = document.getElementById('emailInput');
+        if (emailInput) emailInput.focus();
     }, 50);
-}
-
-function handleCashierTypeChange() {
-    const type = document.getElementById('cashierTypeInput').value;
-    if (type) {
-        localStorage.setItem('cashier_type', type);
-    }
 }
 
 function goBack() {
     showStep('role');
     selectedRole = null;
     hideError();
-    const cashierInput = document.getElementById('cashierTypeInput');
-    if (cashierInput) cashierInput.value = '';
-    const cashierGroup = document.getElementById('cashierTypeGroup');
-    if (cashierGroup) cashierGroup.style.display = 'none';
-    localStorage.removeItem('cashier_type');
 }
 
 function togglePassword() {
@@ -404,15 +367,6 @@ async function handleLogin(e) {
         return;
     }
 
-    // Cashier type validation
-    if (selectedRole === 'cashier') {
-        const cashierType = document.getElementById('cashierTypeInput').value;
-        if (!cashierType) {
-            showError('Please select your cashier type (Entry/Exit)');
-            return;
-        }
-    }
-
     if (btn) {
         btn.disabled = true;
         if (btnText) btnText.textContent = 'Signing in...';
@@ -420,9 +374,9 @@ async function handleLogin(e) {
     }
 
     try {
-        console.log('Sending login request to:', `${API_BASE_URL}/api/auth/login/`);
+        console.log('Sending login request to:', `${API_BASE}/api/auth/login/`);
 
-        const response = await fetch(`${API_BASE_URL}/api/auth/login/`, {
+        const response = await fetch(`${API_BASE}/api/auth/login/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password }),
@@ -444,27 +398,30 @@ async function handleLogin(e) {
         if (selectedRole === 'owner' && returnedRole !== 'parking_owner') {
             throw new Error('This account does not have Parking Owner access.');
         }
-        if (selectedRole === 'cashier') {
-            const cashierType = document.getElementById('cashierTypeInput').value;
-            if (!['entry_cashier', 'exit_cashier'].includes(returnedRole)) {
-                throw new Error('This account does not have Cashier access.');
-            }
-            if (returnedRole !== cashierType) {
-                const selectedLabel = cashierType === 'entry_cashier' ? 'Entry Gate Cashier' : 'Exit Gate Cashier';
-                const actualLabel = returnedRole === 'entry_cashier' ? 'Entry Gate Cashier' : 'Exit Gate Cashier';
-                throw new Error(`This account is registered as ${actualLabel}, not ${selectedLabel}.`);
-            }
+        if (selectedRole === 'cashier' && !['cashier', 'entry_cashier', 'exit_cashier'].includes(returnedRole)) {
+            throw new Error('This account does not have Cashier access.');
         }
 
-        // Determine redirect URL
+        // Store tokens and user info in localStorage
+        localStorage.setItem('access_token', data.tokens?.access || data.access);
+        localStorage.setItem('refresh_token', data.tokens?.refresh || data.refresh || '');
+        localStorage.setItem('user_role', data.role);
+        localStorage.setItem('user_id', data.user_id || '');
+        localStorage.setItem('user_name', data.name || '');
+        if (data.site_id) {
+            localStorage.setItem('site_id', data.site_id);
+        }
+
+        // Role-based redirect
         let redirectUrl;
-        if (selectedRole === 'admin') {
-            redirectUrl = ROLES.admin.redirect;
-        } else if (selectedRole === 'owner') {
-            redirectUrl = ROLES.owner.redirect;
+        if (returnedRole === 'admin') {
+            redirectUrl = `${DASHBOARD_BASE}/admin/dashboard`;
+        } else if (returnedRole === 'parking_owner') {
+            redirectUrl = `${DASHBOARD_BASE}/owner/dashboard`;
+        } else if (['cashier', 'entry_cashier', 'exit_cashier'].includes(returnedRole)) {
+            redirectUrl = `${DASHBOARD_BASE}/cashier/dashboard`;
         } else {
-            const cashierType = document.getElementById('cashierTypeInput').value;
-            redirectUrl = CASHIER_REDIRECTS[cashierType];
+            redirectUrl = `${DASHBOARD_BASE}/`;
         }
 
         // Build redirect URL with tokens
@@ -633,24 +590,20 @@ window.submitQuery = async function (event) {
     spinner.style.display = 'inline-block'
 
     try {
-        if (!supabaseClient) {
-            throw new Error('Supabase client is not initialized.');
-        }
+        const response = await fetch(`${API_BASE}/api/auth/registration-query/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                full_name: name,
+                email: email,
+                phone_number: phone,
+                query_type: 'general_support',
+                message: message,
+            })
+        });
 
-        const { data, error } = await supabaseClient
-            .from('contact_queries')
-            .insert([
-                {
-                    name: name,
-                    email: email,
-                    phone: phone,
-                    query_type: queryType,
-                    message: message,
-                    status: 'pending'
-                }
-            ]);
-
-        if (error) throw error;
+        const respData = await response.json();
+        if (!response.ok) throw new Error(respData.error || 'Submission failed');
 
         document.getElementById('contactForm').reset();
         showSuccessModal('Thank you! We\'ll respond within 24 hours.');
@@ -750,7 +703,7 @@ async function submitOwnerRegistration(event) {
     }
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/auth/registration-query/`, {
+        const response = await fetch(`${API_BASE}/api/auth/registration-query/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -862,7 +815,6 @@ async function handleDirectLogin() {
         const roleSubtitle = document.getElementById('roleSubtitle');
         if (roleSubtitle) roleSubtitle.textContent = cfg.subtitle;
         
-        document.getElementById('cashierTypeGroup').style.display = 'none';
         showStep('login');
     }
     

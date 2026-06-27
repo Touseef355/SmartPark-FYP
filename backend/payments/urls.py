@@ -4,6 +4,7 @@ from .views import (
     PaymentDetailView,
     AdminPaymentListView,
     AdminPaymentRefundView,
+    OwnerPaymentsView,
 )
 
 urlpatterns = [
@@ -24,4 +25,8 @@ urlpatterns = [
 
     # PATCH /api/payments/admin/<uuid>/refund/   body: {"refund_amount": "120.00"}
     path("admin/<uuid:pk>/refund/", AdminPaymentRefundView.as_view(), name="admin-payment-refund"),
+
+    # ── Owner ─────────────────────────────────────────────────────────────
+    # GET  /api/payments/owner/
+    path("owner/", OwnerPaymentsView.as_view(), name="owner-payments"),
 ]
